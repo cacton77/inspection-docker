@@ -1,1 +1,25 @@
 repositories:
+    Inspection_Cell:
+        type: git
+        url: https://github.com/DevanshB99/Inspection_Cell
+        version: main
+    
+    Inspection_Control:
+        type: git
+        url: https://github.com/antara1005/Inspection_Control
+        version: main
+
+    Turntable_ROS2_Driver:
+        type: git
+        url: https://github.com/DevanshB99/Turntable_ROS2_Driver.git
+        version: ESP32
+
+    ViewpointGeneration:
+        type: git
+        url: https://github.com/cacton77/ViewpointGeneration
+        version: devel
+
+    http_image_publisher:
+        type: git
+        url: https://github.com/cacton77/http_image_publisher
+        version: main

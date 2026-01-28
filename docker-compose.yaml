@@ -28,12 +28,13 @@ services:
       - XAUTHORITY=/tmp/.docker.xauth
       - XDG_RUNTIME_DIR=/tmp/runtime-${USERNAME:-macs}
       - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}
-      - CYCLONEDDS_URI=${CYCLONEDDS_URI:-file:///cyclonedds.xml}
+      - CYCLONEDDS_URI=${CYCLONEDDS_URI:-file:///config/cyclonedds.xml}
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
       - /tmp/.docker.xauth:/tmp/.docker.xauth:rw
       - ./shared_ws:/workspaces/shared_ws:rw
       - ./data:/data:rw
+      - ./config:/config:rw
       # REMOVE /dev/dri - that's for Intel
       - /dev:/dev
       - /tmp/runtime-${USERNAME:-macs}:/tmp/runtime-${USERNAME:-macs}:rw

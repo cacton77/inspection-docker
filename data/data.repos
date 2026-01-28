@@ -1,1 +1,9 @@
 repositories:
+    ViewpointGenerationData:
+        type: git
+        url: https://github.com/cacton77/ViewpointGenerationData.git
+        version: main
+    AutofocusData:
+        type: git
+        url: https://github.com/macs-lab/AutofocusData.git
+        version: main

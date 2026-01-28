@@ -4,7 +4,7 @@ FROM ${BASE_IMAGE}
 ARG ROS_DISTRO=humble
 ENV ROS_DISTRO=${ROS_DISTRO}
 
-# Install base dependencies
+# Install MoveIt2 build dependencies
 COPY docker/packages.txt /tmp/packages.txt
 RUN apt-get update && \
     grep -v '^#' /tmp/packages.txt | grep -v '^$' | xargs apt-get install -y && \
@@ -25,14 +25,33 @@ RUN rosdep update
 RUN mkdir -p /workspaces/base_ws/src
 WORKDIR /workspaces/base_ws/src
 
-# Clone base repositories
+# Remove any pre-installed MoveIt packages to avoid conflicts
+RUN apt-get update && \
+    apt-get remove -y ros-${ROS_DISTRO}-moveit* || true && \
+    rm -rf /var/lib/apt/lists/*
 
+# Clone base repositories
+RUN git clone https://github.com/ros-planning/moveit2.git -b main && \
+    for repo in moveit2/moveit2.repos $(f="moveit2/moveit2.repos"; test -r $f && echo $f); do vcs import < "$repo"; done
+
+# Fix issues with includes and servo node name
+RUN sed -i 's/#include <types.h>/#include <sys\/types.h>/' \
+    /workspaces/base_ws/src/moveit2/moveit_core/online_signal_smoothing/include/moveit/online_signal_smoothing/acceleration_filter.hpp
+
+# Install dependencies (skip problematic packages)
+RUN /bin/bash -c "source /opt/ros/${ROS_DISTRO}/setup.bash && \
+    rosdep install -r --from-paths . --ignore-src --rosdistro ${ROS_DISTRO} -y \
+    --skip-keys='ros-humble-ros-testing ros-humble-stomp ros-humble-topic-tools ros-humble-osqp-vendor ros-humble-launch-pytest ros-humble-rmf-utils ros-humble-ament-clang-format' || \
+    echo 'Some dependencies failed to install but continuing with build...'"
+
+RUN ln -sf /usr/include/sys/types.h /usr/include/types.h
 
 # Build the workspace without tests and with overrides
 WORKDIR /workspaces/base_ws
 RUN /bin/bash -c "source /opt/ros/${ROS_DISTRO}/setup.bash && \
     colcon build \
     --executor sequential \
+    --allow-overriding moveit moveit_common moveit_configs_utils moveit_core moveit_hybrid_planning moveit_kinematics moveit_msgs moveit_planners moveit_planners_ompl moveit_resources_fanuc_moveit_config moveit_resources_panda_moveit_config moveit_ros_move_group moveit_ros_perception moveit_ros_planning moveit_ros_planning_interface moveit_ros_visualization moveit_servo moveit_simple_controller_manager \
     --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF"
 
 # Install overlay dependencies

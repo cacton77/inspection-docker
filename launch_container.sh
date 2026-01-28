@@ -23,7 +23,11 @@ RUNNING_CONTAINER=$(docker ps --format '{{.Names}}' | grep -E "^${CONTAINER_NAME
 
 if [ -n "$RUNNING_CONTAINER" ]; then
     echo "Container '$RUNNING_CONTAINER' is already running. Executing bash..."
-    docker exec -it "$RUNNING_CONTAINER" /bin/bash
+    if [ $# -eq 0 ]; then
+        docker exec -it "$RUNNING_CONTAINER" /bin/bash
+    else
+        docker exec -it "$RUNNING_CONTAINER" /bin/bash -c "source ~/.bashrc && $*"
+    fi
 else
     echo "Starting container '$CONTAINER_NAME'..."
     if [ "$USE_GPU" = "true" ]; then
@@ -31,5 +35,9 @@ else
     else
         echo "GPU support: disabled"
     fi
-    $COMPOSE_CMD run --rm app /bin/bash
+    if [ $# -eq 0 ]; then
+        $COMPOSE_CMD run --rm app /bin/bash
+    else
+        $COMPOSE_CMD run --rm app /bin/bash -c "source ~/.bashrc && $*"
+    fi
 fi

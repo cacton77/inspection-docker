@@ -39,9 +39,9 @@ fi
 # Use bash -ic to ensure .bashrc is sourced (sets up ROS 2 environment)
 if [ $# -eq 0 ]; then
     # No arguments provided, attach interactively
-    docker exec -it "$RUNNING_CONTAINER" bash -ic "$*"
+    docker exec -it "$RUNNING_CONTAINER" bash -ic "ros2 launch viewpoint_generation bringup.launch.py $*"
 elif [ -t 0 ]; then
-    docker exec -it "$RUNNING_CONTAINER" bash -ic "$*"
+    docker exec -it "$RUNNING_CONTAINER" bash -ic "ros2 launch viewpoint_generation bringup.launch.py $*"
 else
-    docker exec "$RUNNING_CONTAINER" bash -ic "$*"
+    docker exec "$RUNNING_CONTAINER" bash -ic "ros2 launch viewpoint_generation bringup.launch.py $*"
 fi

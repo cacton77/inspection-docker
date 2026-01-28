@@ -3,7 +3,7 @@
     <Domain id="any">
         <General>
             <!-- Disable shared memory for cross-machine communication -->
-            <EnableMulticastLoopback>false</EnableMulticastLoopback>
+            <EnableMulticastLoopback>true</EnableMulticastLoopback>
         </General>
         <Internal>
             <!-- Increase write-side buffers to prevent backpressure -->
