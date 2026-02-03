@@ -47,10 +47,13 @@ RUN /bin/bash -c "source /opt/ros/${ROS_DISTRO}/setup.bash && \
 RUN ln -sf /usr/include/sys/types.h /usr/include/types.h
 
 # Build the workspace without tests and with overrides
+# MAKEFLAGS='-j2' limits compiler parallelism to reduce RAM usage
+# --parallel-workers 1 builds only one package at a time
 WORKDIR /workspaces/base_ws
 RUN /bin/bash -c "source /opt/ros/${ROS_DISTRO}/setup.bash && \
-    colcon build \
+    MAKEFLAGS='-j2' colcon build \
     --executor sequential \
+    --parallel-workers 1 \
     --allow-overriding moveit moveit_common moveit_configs_utils moveit_core moveit_hybrid_planning moveit_kinematics moveit_msgs moveit_planners moveit_planners_ompl moveit_resources_fanuc_moveit_config moveit_resources_panda_moveit_config moveit_ros_move_group moveit_ros_perception moveit_ros_planning moveit_ros_planning_interface moveit_ros_visualization moveit_servo moveit_simple_controller_manager \
     --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF"
 
