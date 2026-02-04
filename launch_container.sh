@@ -26,7 +26,8 @@ if [ -n "$RUNNING_CONTAINER" ]; then
     if [ $# -eq 0 ]; then
         docker exec -it "$RUNNING_CONTAINER" /bin/bash
     else
-        docker exec -it "$RUNNING_CONTAINER" /bin/bash -c "source ~/.bashrc && $*"
+        # Source entrypoint directly (not .bashrc which has non-interactive guard)
+        docker exec -it "$RUNNING_CONTAINER" /bin/bash -c "source /entrypoint.sh && $*"
     fi
 else
     echo "Starting container '$CONTAINER_NAME'..."
@@ -38,6 +39,7 @@ else
     if [ $# -eq 0 ]; then
         $COMPOSE_CMD run --rm app /bin/bash
     else
-        $COMPOSE_CMD run --rm app /bin/bash -c "source ~/.bashrc && $*"
+        # Don't use "bash -c" wrapper - let entrypoint handle environment and run command directly
+        $COMPOSE_CMD run --rm app "$@"
     fi
 fi
