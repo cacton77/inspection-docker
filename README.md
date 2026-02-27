@@ -77,9 +77,9 @@ Large data assets are stored in Git LFS and cloned into `data/`.
 
 ---
 
-## Installation
+## Installation & Building
 
-Run the install script once to build the image, clone all packages, and install desktop shortcuts:
+`install.sh` is the main script for both initial setup and rebuilding the workspace during development:
 
 ```bash
 ./install.sh
@@ -87,9 +87,9 @@ Run the install script once to build the image, clone all packages, and install 
 
 The script will:
 1. Auto-detect an NVIDIA GPU (override with `--gpu` or `--no-gpu`)
-2. Build the Docker image
+2. Build (or rebuild) the Docker image
 3. Install `vcstool` and `git-lfs` if not present
-4. Clone all packages from `shared.repos` into `shared_ws/src/`
+4. Clone all packages from `shared.repos` into `shared_ws/src/` (skipped if `src/` already exists)
 5. Clone data repositories from `data.repos` and pull Git LFS objects
 6. Create desktop shortcuts (`bringup.desktop`, `devel.desktop`) on `~/Desktop`
 7. Increase kernel socket buffer limits for DDS performance
@@ -102,6 +102,8 @@ The script will:
 # Disable GPU support
 ./install.sh --no-gpu
 ```
+
+Re-running `install.sh` during development will rebuild the Docker image (using cache) and rebuild `shared_ws`, making it the standard way to apply source changes.
 
 ---
 
@@ -181,7 +183,13 @@ cd shared_ws/src
 vcs pull
 ```
 
-Then rebuild inside the container:
+Then re-run `install.sh` to rebuild the workspace:
+
+```bash
+./install.sh
+```
+
+Or rebuild directly inside the container without going through the full install:
 
 ```bash
 ./launch_container.sh colcon build

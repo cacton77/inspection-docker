@@ -145,6 +145,7 @@ if [ -f "$SCRIPT_DIR/$BRINGUP_DESKTOP_FILE" ]; then
     echo "✓ Bringup desktop file installed"
     echo "Icon=$ASSETS_DIR/bringup_icon.png" >> "$APPS_DIR/$BRINGUP_DESKTOP_FILE"
     echo "Creating bringup desktop shortcut..."
+    mkdir -p "$HOME/Desktop"
     # Remove existing shortcut if it exists
     rm -f "$HOME/Desktop/$BRINGUP_DESKTOP_FILE"
     ln -s "$APPS_DIR/$BRINGUP_DESKTOP_FILE" "$HOME/Desktop/"
@@ -191,12 +192,19 @@ if command -v update-desktop-database &> /dev/null; then
     echo ""
 fi
 
+# Install pip3 if not installed
+if ! command -v pip3 &> /dev/null; then
+    echo ""
+    echo "pip3 not found. Installing pip3..."
+    sudo apt-get update && sudo apt-get install -y python3-pip
+    echo "✓ pip3 installed"
+fi
+
 # Install vcstool if not installed
 if ! command -v vcs &> /dev/null; then
     echo ""
     echo "vcstool not found. Installing vcstool..."
-    sudo apt update
-    sudo apt install -y python3-vcstool
+    pip3 install --break-system-packages vcstool
     echo "✓ vcstool installed"
 else
     echo ""
@@ -221,9 +229,7 @@ fi
 if ! command -v vcs &> /dev/null; then                                                           
     echo ""                                                                                      
     echo "vcstool not found. Installing vcstool..."                                              
-    sudo apt install -y pipx                                                                     
-    pipx install vcstool                                                                         
-    pipx ensurepath                                                                              
+    sudo apt install vcstool
     export PATH="$PATH:$HOME/.local/bin"                                                         
     echo "✓ vcstool installed"                                                                   
 else                                                                                             
