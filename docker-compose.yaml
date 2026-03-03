@@ -8,7 +8,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile
       args:
-        BASE_IMAGE: osrf/ros:humble-desktop-full  # x86_64 only
+        BASE_IMAGE: osrf/ros:humble-desktop-full # x86_64 only
         # BASE_IMAGE: dustynv/ros:humble-ros-base-l4t-r36.3.0  # NVIDIA Jetson (ARM64)
         # BASE_IMAGE: ros:humble  # Multi-architecture (ARM64/x86_64)
         ROS_DISTRO: humble
@@ -32,7 +32,8 @@ services:
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
       - /tmp/.docker.xauth:/tmp/.docker.xauth:rw
-      - ./shared_ws:/workspaces/shared_ws:rw
+      - ./docker/entrypoint.sh:/entrypoint.sh:ro
+      - ./src:/workspaces/shared_ws/src:rw
       - ./data:/data:rw
       - ./config:/config:rw
       # REMOVE /dev/dri - that's for Intel
@@ -42,4 +43,4 @@ services:
       - 'c *:* rmw'
     working_dir: /workspaces/shared_ws
     user: ${UID:-1000}:${UID:-1000}
-    command: ["/bin/bash"]
+    command: [ "/bin/bash" ]

@@ -14,6 +14,74 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 CONTAINER_NAME=$(basename "$SCRIPT_DIR" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')
 echo "Container name: $CONTAINER_NAME"
 
+# Install pip3 if not installed
+if ! command -v pip3 &> /dev/null; then
+    echo ""
+    echo "pip3 not found. Installing pip3..."
+    sudo apt-get update && sudo apt-get install -y python3-pip
+    echo "✓ pip3 installed"
+fi
+
+# Install vcstool if not installed
+if ! command -v vcs &> /dev/null; then
+    echo ""
+    echo "vcstool not found. Installing vcstool..."
+    pip3 install --break-system-packages vcstool
+    echo "✓ vcstool installed"
+else
+    echo ""
+    echo "✓ vcstool is already installed"
+fi
+
+# Install vcstool if not installed                                                               
+if ! command -v vcs &> /dev/null; then                                                           
+    echo ""                                                                                      
+    echo "vcstool not found. Installing vcstool..."                                              
+    sudo apt install vcstool
+    export PATH="$PATH:$HOME/.local/bin"                                                         
+    echo "✓ vcstool installed"                                                                   
+else                                                                                             
+    echo ""                                                                                      
+    echo "✓ vcstool is already installed"                                                        
+fi
+
+# Import dependencies into shared_ws directory
+SRC_DIR="$SCRIPT_DIR/src"
+cd "$SRC_DIR"
+echo "Importing dependencies..."
+vcs import < ./shared.repos
+echo "✓ Dependencies imported"
+
+# If git-lfs is not installed, Install git-lfs
+if ! command -v git-lfs &> /dev/null; then
+    echo ""
+    echo "Git LFS not found. Installing Git LFS..."
+    curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | sudo bash
+    sudo apt-get install git-lfs
+    git lfs install
+    echo "✓ Git LFS installed"
+else
+    echo ""
+    echo "✓ Git LFS is already installed"
+fi
+
+# Import data repos into data directory
+DATA_DIR="$SCRIPT_DIR/data"
+cd "$DATA_DIR"
+echo "Importing data repositories..."
+vcs import < ./data.repos
+# Enter each folder under DATA_DIR
+for dir in "$DATA_DIR"/*/; do
+    if [ -d "$dir/.git" ]; then
+        cd "$dir"
+        git lfs install
+        git lfs pull
+        git lfs fetch --all
+        echo "✓ Data repository updated: $dir"
+        cd "$DATA_DIR"
+    fi
+done
+
 # Parse command line arguments
 USE_GPU=""
 for arg in "$@"; do
@@ -70,7 +138,7 @@ else
 fi
 
 # Create applications directory if it doesn't exist
-APPS_DIR="$HOME/.local/share/applications/$SCRIPT_DIR"
+APPS_DIR="$HOME/.local/share/applications/$CONTAINER_NAME"
 echo ""
 echo "Ensuring applications directory exists: $APPS_DIR"
 if [ -d "$APPS_DIR" ]; then
@@ -138,9 +206,9 @@ done
 
 # Copy desktop file
 BRINGUP_DESKTOP_FILE="bringup.desktop"
-if [ -f "$SCRIPT_DIR/$BRINGUP_DESKTOP_FILE" ]; then
+if [ -f "$SCRIPT_DIR/desktop/$BRINGUP_DESKTOP_FILE" ]; then
     echo "Copying bringup desktop file to $APPS_DIR..."
-    cp "$SCRIPT_DIR/$BRINGUP_DESKTOP_FILE" "$APPS_DIR/"
+    cp "$SCRIPT_DIR/desktop/$BRINGUP_DESKTOP_FILE" "$APPS_DIR/"
     chmod +x "$APPS_DIR/$BRINGUP_DESKTOP_FILE"
     echo "✓ Bringup desktop file installed"
     echo "Icon=$ASSETS_DIR/bringup_icon.png" >> "$APPS_DIR/$BRINGUP_DESKTOP_FILE"
@@ -151,14 +219,14 @@ if [ -f "$SCRIPT_DIR/$BRINGUP_DESKTOP_FILE" ]; then
     ln -s "$APPS_DIR/$BRINGUP_DESKTOP_FILE" "$HOME/Desktop/"
     echo "✓ Desktop shortcut created"
 else
-    echo "✗ Bringup desktop file not found: $SCRIPT_DIR/$BRINGUP_DESKTOP_FILE"
+    echo "✗ Bringup desktop file not found: $SCRIPT_DIR/desktop/$BRINGUP_DESKTOP_FILE"
     exit 1
 fi
 # Copy devel desktop file
 DEVEL_DESKTOP_FILE="devel.desktop"
-if [ -f "$SCRIPT_DIR/$DEVEL_DESKTOP_FILE" ]; then
+if [ -f "$SCRIPT_DIR/desktop/$DEVEL_DESKTOP_FILE" ]; then
     echo "Copying devel desktop file to $APPS_DIR..."
-    cp "$SCRIPT_DIR/$DEVEL_DESKTOP_FILE" "$APPS_DIR/"
+    cp "$SCRIPT_DIR/desktop/$DEVEL_DESKTOP_FILE" "$APPS_DIR/"
     chmod +x "$APPS_DIR/$DEVEL_DESKTOP_FILE"
     echo "✓ Devel desktop file installed"
     echo "Icon=$ASSETS_DIR/devel_icon.png" >> "$APPS_DIR/$DEVEL_DESKTOP_FILE"
@@ -168,7 +236,7 @@ if [ -f "$SCRIPT_DIR/$DEVEL_DESKTOP_FILE" ]; then
     ln -s "$APPS_DIR/$DEVEL_DESKTOP_FILE" "$HOME/Desktop/"
     echo "✓ Desktop shortcut created"
 else
-    echo "✗ Devel desktop file not found: $SCRIPT_DIR/$DEVEL_DESKTOP_FILE"
+    echo "✗ Devel desktop file not found: $SCRIPT_DIR/desktop/$DEVEL_DESKTOP_FILE"
     exit 1
 fi
 
@@ -192,80 +260,6 @@ if command -v update-desktop-database &> /dev/null; then
     echo ""
 fi
 
-# Install pip3 if not installed
-if ! command -v pip3 &> /dev/null; then
-    echo ""
-    echo "pip3 not found. Installing pip3..."
-    sudo apt-get update && sudo apt-get install -y python3-pip
-    echo "✓ pip3 installed"
-fi
-
-# Install vcstool if not installed
-if ! command -v vcs &> /dev/null; then
-    echo ""
-    echo "vcstool not found. Installing vcstool..."
-    pip3 install --break-system-packages vcstool
-    echo "✓ vcstool installed"
-else
-    echo ""
-    echo "✓ vcstool is already installed"
-fi
-
-# Import dependencies into shared_ws directory
-SHARED_WS="$SCRIPT_DIR/shared_ws"
-# If src folder doesn't exist
-if [ ! -d "$SHARED_WS/src" ]; then
-    echo "Creating src directory: $SHARED_WS/src"
-    mkdir -p "$SHARED_WS/src"
-    cd "$SHARED_WS/src"
-    echo "Importing dependencies..."
-    vcs import < ../shared.repos
-    echo "✓ Dependencies imported"
-else
-    echo "✓ Src directory already exists: $SHARED_WS/src"
-fi
-
-# Install vcstool if not installed                                                               
-if ! command -v vcs &> /dev/null; then                                                           
-    echo ""                                                                                      
-    echo "vcstool not found. Installing vcstool..."                                              
-    sudo apt install vcstool
-    export PATH="$PATH:$HOME/.local/bin"                                                         
-    echo "✓ vcstool installed"                                                                   
-else                                                                                             
-    echo ""                                                                                      
-    echo "✓ vcstool is already installed"                                                        
-fi
-
-# If git-lfs is not installed, Install git-lfs
-if ! command -v git-lfs &> /dev/null; then
-    echo ""
-    echo "Git LFS not found. Installing Git LFS..."
-    curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | sudo bash
-    sudo apt-get install git-lfs
-    git lfs install
-    echo "✓ Git LFS installed"
-else
-    echo ""
-    echo "✓ Git LFS is already installed"
-fi
-
-# Import data repos into data directory
-DATA_DIR="$SCRIPT_DIR/data"
-cd "$DATA_DIR"
-echo "Importing data repositories..."
-vcs import < ./data.repos
-# Enter each folder under DATA_DIR
-for dir in "$DATA_DIR"/*/; do
-    if [ -d "$dir/.git" ]; then
-        cd "$dir"
-        git lfs install
-        git lfs pull
-        git lfs fetch --all
-        echo "✓ Data repository updated: $dir"
-        cd "$DATA_DIR"
-    fi
-done
 
 # Set kernel socket buffer limit (permanent)
 if ! grep -q "net.core.rmem_max=26214400" /etc/sysctl.conf; then

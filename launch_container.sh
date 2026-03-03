@@ -24,10 +24,9 @@ RUNNING_CONTAINER=$(docker ps --format '{{.Names}}' | grep -E "^${CONTAINER_NAME
 if [ -n "$RUNNING_CONTAINER" ]; then
     echo "Container '$RUNNING_CONTAINER' is already running. Executing bash..."
     if [ $# -eq 0 ]; then
-        docker exec -it "$RUNNING_CONTAINER" /bin/bash
+        docker exec -it "$RUNNING_CONTAINER" bash -c "source /entrypoint.sh && exec bash"
     else
-        # Source entrypoint directly (not .bashrc which has non-interactive guard)
-        docker exec -it "$RUNNING_CONTAINER" /bin/bash -c "source /entrypoint.sh && $*"
+        docker exec -it "$RUNNING_CONTAINER" bash -c "source /entrypoint.sh && $*"
     fi
 else
     echo "Starting container '$CONTAINER_NAME'..."
