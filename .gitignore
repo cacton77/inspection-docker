@@ -1,5 +1,5 @@
-shared_ws/*
-!shared_ws/shared.repos
+src/*
+!src/shared.repos
 data/*
 !data/data.repos
 .claude/
