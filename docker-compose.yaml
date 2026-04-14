@@ -35,6 +35,7 @@ services:
       - ./docker/entrypoint.sh:/entrypoint.sh:ro
       - ./src:/workspaces/shared_ws/src:rw
       - ./data:/data:rw
+      - ./models:/models:rw
       - ./config:/config:rw
       # REMOVE /dev/dri - that's for Intel
       - /dev:/dev

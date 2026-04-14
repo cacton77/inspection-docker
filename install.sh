@@ -82,6 +82,25 @@ for dir in "$DATA_DIR"/*/; do
     fi
 done
 
+# Import model repositories
+MODELS_DIR="$SCRIPT_DIR/models"
+cd "$MODELS_DIR"
+echo ""
+echo "Importing model repositories..."
+vcs import < ./models.repos
+echo "✓ Model repositories imported"
+
+# Download PartField pretrained model checkpoint
+PARTFIELD_MODEL="$MODELS_DIR/PartField/model/model_objaverse.ckpt"
+if [ -f "$PARTFIELD_MODEL" ]; then
+    echo "✓ PartField model already downloaded"
+else
+    echo "Downloading PartField model checkpoint..."
+    mkdir -p "$MODELS_DIR/PartField/model"
+    wget -O "$PARTFIELD_MODEL" "https://huggingface.co/mikaelaangel/partfield-ckpt/resolve/main/model_objaverse.ckpt"
+    echo "✓ PartField model downloaded"
+fi
+
 # Parse command line arguments
 USE_GPU=""
 for arg in "$@"; do

@@ -63,8 +63,29 @@ RUN apt-get update && \
     grep -v '^#' /tmp/overlay_packages.txt | grep -v '^$' | xargs apt-get install -y && \
     rm -rf /var/lib/apt/lists/* /tmp/overlay_packages.txt
 
+# Install CUDA 12.4 toolkit for PyTorch/PartField support
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gnupg2 ca-certificates && \
+    apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/3bf863cc.pub && \
+    echo "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64 /" > /etc/apt/sources.list.d/cuda.list && \
+    apt-get update && apt-get install -y --no-install-recommends \
+    cuda-toolkit-12-4 \
+    libxrender1 && \
+    rm -rf /var/lib/apt/lists/*
+
+ENV PATH="/usr/local/cuda-12.4/bin:${PATH}"
+ENV LD_LIBRARY_PATH="/usr/local/cuda-12.4/lib64:${LD_LIBRARY_PATH}"
+
 COPY docker/requirements.txt /tmp/requirements.txt
-RUN python3 -m pip install -r /tmp/requirements.txt --force-reinstall && rm /tmp/requirements.txt
+RUN python3 -m pip install -r /tmp/requirements.txt \
+    --extra-index-url https://download.pytorch.org/whl/cu124 \
+    --force-reinstall && rm /tmp/requirements.txt
+
+# Install torch-scatter (requires torch to be installed first)
+RUN python3 -m pip install torch-scatter -f https://data.pyg.org/whl/torch-2.4.0+cu124.html
+
+# PartField is mounted via docker-compose from models/PartField
+ENV PYTHONPATH="/opt/partfield:${PYTHONPATH}"
 
 # Install CycloneDDS
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -73,6 +94,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Clone shared workspace repositories
 RUN mkdir -p /workspaces/shared_ws/src
 RUN mkdir -p /data
+RUN mkdir -p /models
 
 # Create new user and add to video group
 RUN apt-get update && apt-get install -y sudo && rm -rf /var/lib/apt/lists/*

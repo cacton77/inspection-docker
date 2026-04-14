@@ -1,0 +1,5 @@
+repositories:
+    PartField:
+        type: git
+        url: https://github.com/nv-tlabs/PartField.git
+        version: main

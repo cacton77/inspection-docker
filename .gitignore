@@ -2,5 +2,7 @@ src/*
 !src/shared.repos
 data/*
 !data/data.repos
+models/*
+!models/models.repos
 .claude/
 .vscode/
