@@ -12,8 +12,11 @@ fi
 # Default container name if not set
 CONTAINER_NAME="${CONTAINER_NAME:-ros2-docker-template}"
 
-# Build compose command based on GPU setting
+# Build compose command based on GPU and distro settings
 COMPOSE_CMD="docker compose -f docker-compose.yaml"
+if [ "$USE_JAZZY" = "true" ]; then
+    COMPOSE_CMD="$COMPOSE_CMD -f docker-compose.jazzy.yaml"
+fi
 if [ "$USE_GPU" = "true" ]; then
     COMPOSE_CMD="$COMPOSE_CMD -f docker-compose.nvidia.yaml"
 fi

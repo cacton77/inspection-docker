@@ -103,6 +103,7 @@ fi
 
 # Parse command line arguments
 USE_GPU=""
+USE_JAZZY="false"
 for arg in "$@"; do
     case $arg in
         --gpu)
@@ -111,6 +112,10 @@ for arg in "$@"; do
             ;;
         --no-gpu)
             USE_GPU="false"
+            shift
+            ;;
+        --jazzy)
+            USE_JAZZY="true"
             shift
             ;;
         *)
@@ -143,11 +148,15 @@ cd "$SCRIPT_DIR" || exit 1
 # Build the Docker image
 echo ""
 echo "Building Docker image with docker compose..."
-if [ "$USE_GPU" = "true" ]; then
-    docker compose -f docker-compose.yaml -f docker-compose.nvidia.yaml build
-else
-    docker compose build
+COMPOSE_FILES="-f docker-compose.yaml"
+if [ "$USE_JAZZY" = "true" ]; then
+    echo "Building Jazzy image (apt MoveIt, no source build)"
+    COMPOSE_FILES="$COMPOSE_FILES -f docker-compose.jazzy.yaml"
 fi
+if [ "$USE_GPU" = "true" ]; then
+    COMPOSE_FILES="$COMPOSE_FILES -f docker-compose.nvidia.yaml"
+fi
+docker compose $COMPOSE_FILES build
 
 if [ $? -eq 0 ]; then
     echo "✓ Docker image built successfully"
@@ -179,6 +188,12 @@ if [ -f "$SCRIPT_DIR/$ENV_FILE" ]; then
         sed -i "s/^USE_GPU=.*/USE_GPU=$USE_GPU/" "$SCRIPT_DIR/$ENV_FILE"
     else
         echo "USE_GPU=$USE_GPU" >> "$SCRIPT_DIR/$ENV_FILE"
+    fi
+    # Update USE_JAZZY
+    if grep -q "^USE_JAZZY=" "$SCRIPT_DIR/$ENV_FILE"; then
+        sed -i "s/^USE_JAZZY=.*/USE_JAZZY=$USE_JAZZY/" "$SCRIPT_DIR/$ENV_FILE"
+    else
+        echo "USE_JAZZY=$USE_JAZZY" >> "$SCRIPT_DIR/$ENV_FILE"
     fi
     # Copy .env file to apps directory
     echo "Copying .env file to $APPS_DIR..."
