@@ -8,6 +8,7 @@ x-common-env: &common-env
   XAUTHORITY: /tmp/.docker.xauth
   XDG_RUNTIME_DIR: /tmp/runtime-${USERNAME:-macs}
   ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-0}
+  RMW_IMPLEMENTATION: ${RMW_IMPLEMENTATION:-rmw_cyclonedds_cpp}
   CYCLONEDDS_URI: ${CYCLONEDDS_URI:-file:///config/cyclonedds.xml}
 
 x-nvidia-env: &nvidia-env

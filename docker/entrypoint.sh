@@ -24,7 +24,8 @@ else
     fi
 fi
 
-# Set Middleware to CycloneDDS
-export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+# Middleware selection. Honors RMW_IMPLEMENTATION from the environment
+# (set via docker-compose / .env). Defaults to CycloneDDS if unset.
+export RMW_IMPLEMENTATION=${RMW_IMPLEMENTATION:-rmw_cyclonedds_cpp}
 
 exec "$@"
