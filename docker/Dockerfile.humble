@@ -5,7 +5,7 @@ ARG ROS_DISTRO=humble
 ENV ROS_DISTRO=${ROS_DISTRO}
 
 # Install MoveIt2 build dependencies
-COPY docker/packages.txt /tmp/packages.txt
+COPY docker/packages.humble.txt /tmp/packages.txt
 RUN apt-get update && \
     grep -v '^#' /tmp/packages.txt | grep -v '^$' | xargs apt-get install -y && \
     rm -rf /var/lib/apt/lists/* /tmp/packages.txt
@@ -58,7 +58,7 @@ RUN /bin/bash -c "source /opt/ros/${ROS_DISTRO}/setup.bash && \
     --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF"
 
 # Install overlay dependencies
-COPY docker/overlay_packages.txt /tmp/overlay_packages.txt
+COPY docker/overlay_packages.humble.txt /tmp/overlay_packages.txt
 RUN apt-get update && \
     grep -v '^#' /tmp/overlay_packages.txt | grep -v '^$' | xargs apt-get install -y && \
     rm -rf /var/lib/apt/lists/* /tmp/overlay_packages.txt

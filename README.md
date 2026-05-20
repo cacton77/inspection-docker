@@ -31,7 +31,6 @@ inspection-docker/
 ├── docker/
 │   ├── Dockerfile                # Image definition
 │   ├── entrypoint.sh             # Sources ROS2, base_ws, and shared_ws on shell startup
-│   ├── bringup_entrypoint.sh     # Builds shared_ws and launches bringup.launch.py
 │   ├── packages.txt              # APT packages installed into the base image
 │   ├── overlay_packages.txt      # APT packages for the overlay (UR, RealSense)
 │   └── requirements.txt          # Python pip packages

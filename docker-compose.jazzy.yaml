@@ -1,8 +1,0 @@
-services:
-  app:
-    image: ${CONTAINER_NAME:-ros2-docker-template}:jazzy
-    build:
-      dockerfile: docker/Dockerfile.jazzy
-      args:
-        BASE_IMAGE: osrf/ros:jazzy-desktop-full
-        ROS_DISTRO: jazzy

@@ -39,19 +39,19 @@ RUN apt-get update && \
     grep -v '^#' /tmp/overlay_packages.txt | grep -v '^$' | xargs apt-get install -y && \
     rm -rf /var/lib/apt/lists/* /tmp/overlay_packages.txt
 
-# Install CUDA 12.4 toolkit for PyTorch/PartField support
-# Note: ubuntu2404 repo path; verify the public key fingerprint hasn't changed.
+# Install CUDA 12.6 toolkit for PyTorch/PartField support
+# Note: ubuntu2404 repo starts at CUDA 12.5+; PyTorch cu124 wheels are forward-compatible.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         gnupg2 ca-certificates && \
     apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/3bf863cc.pub && \
     echo "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64 /" > /etc/apt/sources.list.d/cuda.list && \
     apt-get update && apt-get install -y --no-install-recommends \
-        cuda-toolkit-12-4 \
+        cuda-toolkit-12-6 \
         libxrender1 && \
     rm -rf /var/lib/apt/lists/*
 
-ENV PATH="/usr/local/cuda-12.4/bin:${PATH}"
-ENV LD_LIBRARY_PATH="/usr/local/cuda-12.4/lib64:${LD_LIBRARY_PATH}"
+ENV PATH="/usr/local/cuda-12.6/bin:${PATH}"
+ENV LD_LIBRARY_PATH="/usr/local/cuda-12.6/lib64:${LD_LIBRARY_PATH}"
 
 # Python deps. NOTE: on Python 3.12 you may need to bump some pins —
 # in particular verify torch wheels exist for cu124+py312 and that
@@ -59,7 +59,7 @@ ENV LD_LIBRARY_PATH="/usr/local/cuda-12.4/lib64:${LD_LIBRARY_PATH}"
 COPY docker/requirements.txt /tmp/requirements.txt
 RUN python3 -m pip install --break-system-packages -r /tmp/requirements.txt \
         --extra-index-url https://download.pytorch.org/whl/cu124 \
-        --force-reinstall && \
+        --force-reinstall --ignore-installed && \
     rm /tmp/requirements.txt
 
 # torch-scatter (requires torch installed first)
@@ -91,14 +91,23 @@ ARG DIALOUT_GID=20
 RUN getent group video || groupadd --gid ${VIDEO_GID} video
 RUN getent group dialout || groupadd --gid ${DIALOUT_GID} dialout
 
-RUN groupadd --gid ${GID} ${USERNAME} \
-    && useradd --uid ${UID} --gid ${GID} --create-home ${USERNAME} \
-    && usermod -a -G video ${USERNAME} \
-    && usermod -a -G dialout ${USERNAME} \
-    && echo ${USERNAME} ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/${USERNAME} \
-    && chmod 0440 /etc/sudoers.d/${USERNAME} \
-    && mkdir -p /home/${USERNAME} \
-    && chown -R ${UID}:${GID} /home/${USERNAME}
+RUN if getent group ${GID} > /dev/null 2>&1; then \
+        groupmod -n ${USERNAME} "$(getent group ${GID} | cut -d: -f1)"; \
+    else \
+        groupadd --gid ${GID} ${USERNAME}; \
+    fi && \
+    if getent passwd ${UID} > /dev/null 2>&1; then \
+        OLD="$(getent passwd ${UID} | cut -d: -f1)" && \
+        usermod -l ${USERNAME} -d /home/${USERNAME} -m "$OLD"; \
+    else \
+        useradd --uid ${UID} --gid ${GID} --create-home ${USERNAME}; \
+    fi && \
+    usermod -a -G video ${USERNAME} && \
+    usermod -a -G dialout ${USERNAME} && \
+    echo "${USERNAME} ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/${USERNAME} && \
+    chmod 0440 /etc/sudoers.d/${USERNAME} && \
+    mkdir -p /home/${USERNAME} && \
+    chown -R ${UID}:${GID} /home/${USERNAME}
 
 RUN chown -R ${UID}:${UID} /workspaces/shared_ws/ && \
     chown -R ${UID}:${UID} /data/
