@@ -10,6 +10,9 @@ x-common-env: &common-env
   ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-0}
   RMW_IMPLEMENTATION: ${RMW_IMPLEMENTATION:-rmw_cyclonedds_cpp}
   CYCLONEDDS_URI: ${CYCLONEDDS_URI:-file:///config/cyclonedds.xml}
+  # FastDDS reads the legacy var on Humble, the new one on Jazzy. Set both.
+  FASTRTPS_DEFAULT_PROFILES_FILE: ${FASTRTPS_DEFAULT_PROFILES_FILE:-/config/fastdds.xml}
+  FASTDDS_DEFAULT_PROFILES_FILE: ${FASTDDS_DEFAULT_PROFILES_FILE:-/config/fastdds.xml}
 
 x-nvidia-env: &nvidia-env
   <<: *common-env
