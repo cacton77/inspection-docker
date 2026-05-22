@@ -664,13 +664,6 @@ if ! grep -q "net.ipv4.ipfrag_low_thresh=100663296" /etc/sysctl.conf; then
 fi
 sudo sysctl -p
 
-# Build shared_ws inside the container
-echo ""
-echo "Building shared_ws..."
-cd "$SCRIPT_DIR"
-./connect.sh colcon build
-echo "✓ shared_ws built"
-
 echo ""
 echo "========================================="
 echo "Installation complete!"
