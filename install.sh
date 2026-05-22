@@ -651,6 +651,17 @@ fi
 if ! grep -q "net.core.wmem_max=26214400" /etc/sysctl.conf; then
     echo "net.core.wmem_max=26214400" | sudo tee -a /etc/sysctl.conf
 fi
+# Bump IP fragment reassembly cache (default 4MB/3MB) — required when
+# subscribing to large image topics (compressedDepth, raw frames) from
+# another host: each message fragments into ~50-100 IP packets and the
+# default cache overflows in milliseconds, causing ~100% reassembly
+# failure (see `netstat -s | grep reassembl`).
+if ! grep -q "net.ipv4.ipfrag_high_thresh=134217728" /etc/sysctl.conf; then
+    echo "net.ipv4.ipfrag_high_thresh=134217728" | sudo tee -a /etc/sysctl.conf
+fi
+if ! grep -q "net.ipv4.ipfrag_low_thresh=100663296" /etc/sysctl.conf; then
+    echo "net.ipv4.ipfrag_low_thresh=100663296" | sudo tee -a /etc/sysctl.conf
+fi
 sudo sysctl -p
 
 # Build shared_ws inside the container
