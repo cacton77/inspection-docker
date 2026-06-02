@@ -32,3 +32,5 @@ ros-jazzy-ros-testing
 ros-jazzy-launch-param-builder
 ros-jazzy-generate-parameter-library
 ros-jazzy-object-recognition-msgs
+ros-jazzy-urdfdom-py
+python3-pykdl
