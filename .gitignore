@@ -2,6 +2,7 @@ src/*
 !src/shared.repos
 data/*
 !data/data.repos
+!data/servo*
 models/*
 !models/models.repos
 .claude/
