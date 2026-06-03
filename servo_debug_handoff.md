@@ -1,5 +1,90 @@
 # MoveIt Servo Debug Handoff
 
+---
+## SESSION 2 UPDATE (2026-06-02) — read this first
+
+A follow-up session reproduced the bug, computed the servo's *own* 6-DOF Jacobian, read
+the upstream MoveIt Servo (jazzy) source, and captured a new log
+(`data/servo_log_20260602_194650.json`). Net result: **the diagnosis in the original
+handoff below is partly superseded.** Summary of what is now known:
+
+### New, hard facts
+- **The output is a FIXED command, essentially independent of the commanded twist.**
+  Every reproduction produces the *identical* joint-velocity-command direction:
+  `j = [~0, ~0, +π, +π, ~0, −π]` → physically **elbow, wrist_1 at +π and wrist_3 at −π**
+  (in the group order pan, lift, elbow, w1, w2, w3), with pan/lift/wrist_2 ≈ 0. The robot
+  really moves these joints at ±π (confirmed from `joint_states.velocity`). It saturates
+  for ~0.2–0.25 s on the first command after an idle period, then `HALT_FOR_SINGULARITY`.
+- Because the realized joint motion is the same fixed pattern regardless of the (varying,
+  tiny, pure-linear) commanded twist, **this is not twist-tracking at all** — the twist
+  arrival merely *triggers* a fixed downstream step.
+
+### What is now RULED OUT (with proof)
+1. **Units / dt scaling bug** — upstream `command.cpp` correctly does
+   `cartesian_position_delta = command.velocities * publish_period`; output velocity is
+   `J⁺·twist`. No 500× units error.
+2. **A real singularity** — computed the servo's actual 6-DOF Jacobian
+   (`ur_base_link → eoat_camera_link`, UR5e DH) at the reproduced config:
+   **σ_min ≈ 0.231, cond ≈ 8** → max IK amplification ≈ 4.3×. The logger's 7-DOF
+   `object_frame→camera` Jacobian agrees (σ_min ≈ 0.244). A fixed EOAT tool offset cannot
+   create a rank drop. In the new log the status is **`NO_WARNING` during the saturation
+   burst** — the Jacobian is genuinely non-singular, yet the output still saturates.
+   ⇒ The original handoff's "σ_min ≈ 0.22" reasoning was correct *and* it proves the IK
+   cannot be the source.
+3. **Stale/zero servo robot state** — set `is_primary_planning_scene_monitor: true`
+   (confirmed live: `ros2 param get /servo_node moveit_servo.is_primary_planning_scene_monitor`
+   → True). This fixed a *real but separate* latent bug (servo previously computed IK from
+   the all-zeros startup scene, where UR5e elbow=0 ∧ wrist_2=0 are exact singularities),
+   but **did NOT fix this bug.** The new log shows correct, non-singular state.
+4. **The EE-frame twist transform** — with `apply_twist_commands_about_ee_frame: true`,
+   `Servo::toPlanningFrame` applies a **rotation only** (no w×r cross term) to the twist.
+   A tiny pure-linear `vy` therefore stays tiny and pure-linear into the IK. It cannot
+   manufacture the large angular content (~6.5 rad/s) seen in the realized motion.
+
+### Where the bug actually is (narrowed)
+The blow-up is **downstream of the IK**, in `Servo::getNextJointState`:
+`target_state.velocities = (target_state.positions − current_state.positions) / publish_period`
+(then `doSmoothing(target_state)` at the very end). With `publish_period = 0.002`, any
+~0.006 rad discrepancy between `target_state.positions` and `current_state.positions`
+becomes a ±π velocity. Two concrete candidates remain:
+
+- **(A) Butterworth smoother stale state.** `Servo::resetSmoothing()` exists but is
+  **never called inside `servo.cpp`** (only the ROS node layer resets it, on pause/unpause).
+  Stale filter state from a long idle period can leak into the first active command.
+- **(B) Joint name/order mismatch.** `/joint_states` is published **alphabetically and
+  includes the turntable joint**: `[elbow, shoulder_lift, shoulder_pan, turntable_disc,
+  wrist_1, wrist_2, wrist_3]`, whereas the `ur5e` group/controller order is
+  `[pan, lift, elbow, w1, w2, w3]`. A mis-map between `current_state` and `target_state`
+  would produce exactly this kind of fixed, large, *partial* saturation that is
+  independent of the commanded twist.
+
+### Decisive A/B test left running
+`cell_servo.yaml` now has **`use_smoothing: false`** (diagnostic). Rebuild
+(`colcon build --packages-select inspection_cell_moveit_config`), relaunch, reproduce:
+- bug **disappears** ⇒ candidate (A), smoother; fix = force smoother reset on idle→active.
+- bug **persists** ⇒ candidate (B), the `(target − current)` joint-order path; chase the
+  `/joint_states` (alphabetical + turntable) → group-order mapping.
+
+### Config changed this session (in `git`)
+- `inspection_cell_moveit_config/config/cell_servo.yaml`:
+  `is_primary_planning_scene_monitor: false → true`; `use_smoothing: true → false` (diag).
+- `inspection_cell_moveit_config/launch/move_group.launch.py`: servo-start `TimerAction`
+  `period 10.0 → 2.0` (the 10 s delay was a band-aid for the now-fixed all-zeros-scene issue).
+
+### Useful runtime checks to re-run
+```
+ros2 param get /servo_node moveit_servo.command_in_type          # expect speed_units
+ros2 service call /servo_node/switch_command_type moveit_msgs/srv/ServoCommandType "{command_type: 1}"  # force TWIST
+ros2 control list_controllers -v                                  # controller joint order
+ros2 topic echo /joint_states --once | grep -A8 name              # confirm alphabetical + turntable
+```
+
+*(Everything below is the ORIGINAL session-1 handoff, retained for context. Note items
+4/6/7 of "What's Been Ruled Out" and the "σ_min" framing are confirmed; the "Hypotheses
+Still On The Table" list is now narrowed to candidates A/B above.)*
+
+---
+
 ## The Bug
 A MoveIt Servo (Jazzy) node driving a UR5e produces a "single-minded trajectory" toward an upside-down EEF configuration regardless of the commanded twist. The pattern: tiny commanded twist on `/servo_node/delta_twist_cmds` (e.g. `vy = 0.002 m/s`), but the realized Cartesian motion of the EE is **~2 m/s linear and ~6.5 rad/s angular** — roughly 1000× amplification.
 

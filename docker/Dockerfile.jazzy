@@ -20,10 +20,10 @@ RUN apt-get update && \
         ros-${ROS_DISTRO}-moveit-resources && \
     rm -rf /var/lib/apt/lists/*
 
-# Ubuntu 24.04 enforces PEP 668 — system pip needs --break-system-packages
-# or a venv. We use --break-system-packages inside the container.
-RUN python3 -m pip install --upgrade --break-system-packages \
-        colcon-common-extensions colcon-core
+# colcon is already installed via apt (python3-colcon-common-extensions in
+# packages.jazzy.txt) and is new enough to support --allow-overriding on Jazzy.
+# Avoid pip --upgrade here: it pulls in a newer pytest/pluggy and then fails
+# trying to uninstall the dpkg-managed python3-pluggy (no RECORD file).
 
 # Set up colcon mixins
 RUN colcon mixin list | grep -q "default" || \
