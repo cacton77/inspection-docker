@@ -18,6 +18,17 @@
             <type>UDPv4</type>
             <sendBufferSize>10485760</sendBufferSize>
             <receiveBufferSize>10485760</receiveBufferSize>
+            <!--
+              Cap each UDP datagram below Ethernet MTU (1500) so FastDDS
+              RTPS-fragments large samples at the app layer instead of
+              relying on IP fragmentation. At 30 Hz × 2.7 MB raw frames,
+              the default 65 KB datagrams produce ~1850 IP fragments per
+              frame; one lost fragment drops the whole datagram and stalls
+              the writer. With small datagrams every UDP packet is a
+              standalone Ethernet frame and the loss model degrades
+              gracefully (verified by iperf3 -l 1400 -b 800M = 0% loss).
+            -->
+            <maxMessageSize>1400</maxMessageSize>
         </transport_descriptor>
     </transport_descriptors>
 
