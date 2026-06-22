@@ -33,4 +33,5 @@ ros-jazzy-launch-param-builder
 ros-jazzy-generate-parameter-library
 ros-jazzy-object-recognition-msgs
 ros-jazzy-urdfdom-py
+ros-jazzy-foxglove-bridge
 python3-pykdl

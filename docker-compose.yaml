@@ -13,6 +13,8 @@ x-common-env: &common-env
   # FastDDS reads the legacy var on Humble, the new one on Jazzy. Set both.
   FASTRTPS_DEFAULT_PROFILES_FILE: ${FASTRTPS_DEFAULT_PROFILES_FILE:-/config/dds/fastdds.xml}
   FASTDDS_DEFAULT_PROFILES_FILE: ${FASTDDS_DEFAULT_PROFILES_FILE:-/config/dds/fastdds.xml}
+  # PartField package lives at the compose mount (./models:/models); make it importable
+  PYTHONPATH: /models/PartField
 
 x-nvidia-env: &nvidia-env
   <<: *common-env

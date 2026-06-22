@@ -66,8 +66,8 @@ RUN python3 -m pip install --break-system-packages -r /tmp/requirements.txt \
 RUN python3 -m pip install --break-system-packages \
         torch-scatter -f https://data.pyg.org/whl/torch-2.4.0+cu124.html
 
-# PartField is mounted via docker-compose from models/PartField
-ENV PYTHONPATH="/opt/partfield:${PYTHONPATH}"
+# PartField is mounted via docker-compose at /models/PartField (./models:/models)
+ENV PYTHONPATH="/models/PartField:${PYTHONPATH}"
 
 # Install CycloneDDS
 RUN apt-get update && apt-get install -y --no-install-recommends \
