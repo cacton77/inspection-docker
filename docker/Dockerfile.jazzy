@@ -40,31 +40,31 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/* /tmp/overlay_packages.txt
 
 # Install CUDA 12.6 toolkit for PyTorch/PartField support
-# Note: ubuntu2404 repo starts at CUDA 12.5+; PyTorch cu124 wheels are forward-compatible.
+# RTX 5080 (and other consumer Blackwell GPUs) use SM 12.0, which requires CUDA 12.8+.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         gnupg2 ca-certificates && \
     apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/3bf863cc.pub && \
     echo "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64 /" > /etc/apt/sources.list.d/cuda.list && \
     apt-get update && apt-get install -y --no-install-recommends \
-        cuda-toolkit-12-6 \
+        cuda-toolkit-12-8 \
         libxrender1 && \
     rm -rf /var/lib/apt/lists/*
 
-ENV PATH="/usr/local/cuda-12.6/bin:${PATH}"
-ENV LD_LIBRARY_PATH="/usr/local/cuda-12.6/lib64:${LD_LIBRARY_PATH}"
+ENV PATH="/usr/local/cuda-12.8/bin:${PATH}"
+ENV LD_LIBRARY_PATH="/usr/local/cuda-12.8/lib64:${LD_LIBRARY_PATH}"
 
 # Python deps. NOTE: on Python 3.12 you may need to bump some pins —
-# in particular verify torch wheels exist for cu124+py312 and that
+# in particular verify torch wheels exist for cu128+py312 and that
 # torch-scatter has matching wheels. Adjust requirements.txt if needed.
 COPY docker/requirements.txt /tmp/requirements.txt
 RUN python3 -m pip install --break-system-packages -r /tmp/requirements.txt \
-        --extra-index-url https://download.pytorch.org/whl/cu124 \
+        --extra-index-url https://download.pytorch.org/whl/cu128 \
         --force-reinstall --ignore-installed && \
     rm /tmp/requirements.txt
 
 # torch-scatter (requires torch installed first)
 RUN python3 -m pip install --break-system-packages \
-        torch-scatter -f https://data.pyg.org/whl/torch-2.4.0+cu124.html
+        torch-scatter -f https://data.pyg.org/whl/torch-2.7.0+cu128.html
 
 # PartField is mounted via docker-compose at /models/PartField (./models:/models)
 ENV PYTHONPATH="/models/PartField:${PYTHONPATH}"

@@ -26,6 +26,7 @@ libxi-dev
 # NOTE: Most MoveIt build deps removed — apt MoveIt pulls them automatically.
 # Kept user-workspace deps (ros2_control, control, testing utilities).
 ros-jazzy-topic-tools
+ros-jazzy-diagnostic-updater
 ros-jazzy-ros2-control*
 ros-jazzy-control*
 ros-jazzy-ros-testing
