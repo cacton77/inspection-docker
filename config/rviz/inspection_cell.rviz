@@ -9,7 +9,7 @@ Panels:
         - /TSDF Cloud1
         - /Image1/Topic1
       Splitter Ratio: 0.5
-    Tree Height: 361
+    Tree Height: 248
   - Class: rviz_common/Views
     Expanded:
       - /Current View1
@@ -47,24 +47,6 @@ Visualization Manager:
           Value: false
         base_link_inertia:
           Value: false
-        camera_aligned_depth_to_infra1_frame:
-          Value: true
-        camera_color_frame:
-          Value: true
-        camera_color_optical_frame:
-          Value: true
-        camera_depth_frame:
-          Value: true
-        camera_depth_optical_frame:
-          Value: true
-        camera_infra1_frame:
-          Value: true
-        camera_infra1_optical_frame:
-          Value: true
-        camera_infra2_frame:
-          Value: true
-        camera_infra2_optical_frame:
-          Value: true
         camera_link:
           Value: false
         eoat_base_link:
@@ -83,8 +65,6 @@ Visualization Manager:
           Value: false
         shoulder_link:
           Value: false
-        surface_normal:
-          Value: true
         table_link:
           Value: false
         tool0:
@@ -116,8 +96,6 @@ Visualization Manager:
       Show Names: false
       Tree:
         object_frame:
-          surface_normal:
-            {}
           turntable_disc_link:
             turntable_base_link_inertia:
               turntable_base_link:
@@ -143,20 +121,7 @@ Visualization Manager:
                                       eoat_base_link:
                                         eoat_camera_link:
                                           camera_link:
-                                            camera_aligned_depth_to_infra1_frame:
-                                              camera_infra1_optical_frame:
-                                                {}
-                                            camera_color_frame:
-                                              camera_color_optical_frame:
-                                                {}
-                                            camera_depth_frame:
-                                              camera_depth_optical_frame:
-                                                {}
-                                            camera_infra1_frame:
-                                              {}
-                                            camera_infra2_frame:
-                                              camera_infra2_optical_frame:
-                                                {}
+                                            {}
                                   ft_frame:
                                     {}
       Update Interval: 0
@@ -434,18 +399,18 @@ Visualization Manager:
 Window Geometry:
   Displays:
     collapsed: false
-  Height: 902
+  Height: 684
   Hide Left Dock: false
   Hide Right Dock: false
   Image:
     collapsed: false
   Macro Camera:
     collapsed: false
-  QMainWindow State: 000000ff00000000fd00000001000000000000036700000330fc020000000cfb000000100044006900730070006c006100790073010000003b000001a4000000c700fffffffb0000000a00560069006500770073000000018200000103000000a000fffffffb0000001c005200650061006c00530065006e007300650020004400340030003501000001e5000001860000001600fffffffb00000018004d006100630072006f002000430061006d0065007200610000000255000001160000001600fffffffb0000000a0049006d006100670065000000045f000000e20000001600fffffffb0000000a0049006d006100670065010000033e000002030000000000000000fb0000000c00430061006d0065007200610100000293000000c00000000000000000fb0000000a0049006d00610067006501000002a7000000c40000000000000000fb0000000c00430061006d006500720061010000040a000001370000000000000000fb0000000a0049006d0061006700650100000359000000a00000000000000000fb0000000c00430061006d00650072006101000003cb000001760000000000000000fb0000000a0049006d0061006700650000000312000000e700000000000000000000033d0000033000000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd00000001000000000000015600000256fc020000000cfb000000100044006900730070006c006100790073010000003b00000133000000c700fffffffb0000000a00560069006500770073000000018200000103000000a000fffffffb0000001c005200650061006c00530065006e007300650020004400340030003501000001740000011d0000001600fffffffb00000018004d006100630072006f002000430061006d0065007200610000000255000001160000001600fffffffb0000000a0049006d006100670065000000045f000000e20000001600fffffffb0000000a0049006d006100670065010000033e000002030000000000000000fb0000000c00430061006d0065007200610100000293000000c00000000000000000fb0000000a0049006d00610067006501000002a7000000c40000000000000000fb0000000c00430061006d006500720061010000040a000001370000000000000000fb0000000a0049006d0061006700650100000359000000a00000000000000000fb0000000c00430061006d00650072006101000003cb000001760000000000000000fb0000000a0049006d0061006700650000000312000000e70000000000000000000003a40000025600000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   RealSense D405:
     collapsed: false
   Views:
     collapsed: false
-  Width: 1706
-  X: 2347
-  Y: 244
+  Width: 1280
+  X: 368
+  Y: 472
