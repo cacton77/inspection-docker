@@ -62,9 +62,15 @@ RUN python3 -m pip install --break-system-packages -r /tmp/requirements.txt \
         --force-reinstall --ignore-installed && \
     rm /tmp/requirements.txt
 
-# torch-scatter (requires torch installed first)
-RUN python3 -m pip install --break-system-packages \
-        torch-scatter -f https://data.pyg.org/whl/torch-2.7.0+cu128.html
+# torch-scatter (requires torch installed first).
+# Built from source (not the prebuilt PyG wheel) because that wheel only ships
+# cubins up to sm_90 — on RTX 50-series (sm_120) it silently falls back to
+# JIT-compiling ancient sm_50 PTX via the CUDA driver on every fresh process.
+# MAX_JOBS is capped to avoid OOM from parallel nvcc invocations compiling
+# multiple archs at once. 8.6 = Ampere (e.g. A4000), 12.0 = Blackwell (RTX 50xx).
+RUN TORCH_CUDA_ARCH_LIST="8.6;12.0" MAX_JOBS=4 \
+    python3 -m pip install --break-system-packages --no-cache-dir \
+        --no-binary=torch_scatter torch-scatter==2.1.2
 
 # PartField is mounted via docker-compose at /models/PartField (./models:/models)
 ENV PYTHONPATH="/models/PartField:${PYTHONPATH}"
