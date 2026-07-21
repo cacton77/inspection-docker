@@ -9,6 +9,9 @@ if [ -f .env ]; then
     set +a
 fi
 
+# Export the host's real UID/GID for docker compose (build args + runtime user).
+source "$SCRIPT_DIR/host-ids.sh"
+
 CONTAINER_NAME="${CONTAINER_NAME:-ros2-docker-template}"
 COMPOSE_PROFILE="${COMPOSE_PROFILE:-linux}"
 

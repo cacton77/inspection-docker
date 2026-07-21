@@ -9,6 +9,9 @@ if [ -f .env ]; then
     source .env
 fi
 
+# Export the host's real UID/GID for docker compose (build args + runtime user).
+source "$SCRIPT_DIR/host-ids.sh"
+
 # Default container name if not set
 CONTAINER_NAME="${CONTAINER_NAME:-ros2-docker-template}"
 COMPOSE_PROFILE="${COMPOSE_PROFILE:-linux}"
@@ -19,8 +22,8 @@ COMPOSE_CMD="docker compose --profile $COMPOSE_PROFILE"
 # Ensure the Qt/XDG runtime directory exists and is owned by the container user
 RUNTIME_DIR="/tmp/runtime-${USERNAME:-macs}"
 mkdir -p "$RUNTIME_DIR" 2>/dev/null || true
-if [ "$(stat -c %u "$RUNTIME_DIR")" != "${UID:-1000}" ]; then
-    sudo chown "${UID:-1000}:${UID:-1000}" "$RUNTIME_DIR"
+if [ "$(stat -c %u "$RUNTIME_DIR")" != "${HOST_UID:-1000}" ]; then
+    sudo chown "${HOST_UID:-1000}:${HOST_GID:-1000}" "$RUNTIME_DIR"
 fi
 
 # Check if a container is already running (exact match or compose run pattern)

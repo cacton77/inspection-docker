@@ -24,8 +24,8 @@ x-nvidia-env: &nvidia-env
 x-common-build-args: &common-build-args
   ROS_DISTRO: ${ROS_DISTRO:-humble}
   USERNAME: ${USERNAME:-macs}
-  UID: ${UID:-1000}
-  GID: ${UID:-1000}
+  UID: ${HOST_UID:-1000}
+  GID: ${HOST_GID:-1000}
   VIDEO_GID: 44
   DIALOUT_GID: 20
 
@@ -51,7 +51,7 @@ x-common-service: &common-service
   device_cgroup_rules:
     - 'c *:* rmw'
   working_dir: /workspaces/shared_ws
-  user: ${UID:-1000}:${UID:-1000}
+  user: ${HOST_UID:-1000}:${HOST_GID:-1000}
   command: ["/bin/bash"]
 
 # ============================================================

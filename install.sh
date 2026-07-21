@@ -16,6 +16,10 @@ if [ -f "$SCRIPT_DIR/.env" ]; then
     source "$SCRIPT_DIR/.env"
     set +a
 fi
+
+# Export the host's real UID/GID for docker compose (build args + runtime user).
+source "$SCRIPT_DIR/host-ids.sh"
+
 ROS_DOMAIN_ID="${ROS_DOMAIN_ID:-0}"
 
 # Get container name from folder name (sanitize for docker: lowercase, no spaces)

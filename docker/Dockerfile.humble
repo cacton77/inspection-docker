@@ -120,8 +120,8 @@ RUN groupadd --gid ${GID} ${USERNAME} \
     && chown -R ${UID}:${GID} /home/${USERNAME}
 
 # Set the ownership of the shared workspace to the new user
-RUN chown -R ${UID}:${UID} /workspaces/shared_ws/
-RUN chown -R ${UID}:${UID} /data/
+RUN chown -R ${UID}:${GID} /workspaces/shared_ws/
+RUN chown -R ${UID}:${GID} /data/
 
 # Set the user and source entrypoint in the user's .bashrc file
 COPY ./docker/entrypoint.sh /
