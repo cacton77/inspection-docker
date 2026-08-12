@@ -15,6 +15,25 @@ x-common-env: &common-env
   FASTDDS_DEFAULT_PROFILES_FILE: ${FASTDDS_DEFAULT_PROFILES_FILE:-/config/dds/fastdds.xml}
   # PartField package lives at the compose mount (./models:/models); make it importable
   PYTHONPATH: /models/PartField
+  # 3DX integration (loaded from .env)
+  DX_PASSPORT_URL: ${DX_PASSPORT_URL:-}
+  DX_SPACE_URL: ${DX_SPACE_URL:-}
+  DX_TENANT: ${DX_TENANT:-}
+  DX_USERNAME: ${DX_USERNAME:-}
+  DX_PASSWORD: ${DX_PASSWORD:-}
+  DX_SECURITY_CONTEXT: ${DX_SECURITY_CONTEXT:-}
+  DX_BOOKMARK_SCOPE: ${DX_BOOKMARK_SCOPE:-}
+  DX_COLLAB_SPACE: ${DX_COLLAB_SPACE:-}
+  DX_MATURITY_FILTER: ${DX_MATURITY_FILTER:-}
+  # Optional STOMP/AMQP bridge; unset means the catalog polls instead.
+  DX_JMS_BROKER_URL: ${DX_JMS_BROKER_URL:-}
+  CATALOG_SYNC_INTERVAL: ${CATALOG_SYNC_INTERVAL:-300}
+  # Catalog cache root inside the container, matching the ./catalog mount below.
+  CATALOG_ROOT: /workspaces/shared_ws/catalog
+  CELL_ID: ${CELL_ID:-alpha}
+  # The picker binds this port. These services use network_mode: host, so it is
+  # reachable at http://localhost:${PICKER_PORT} with no port mapping needed.
+  PICKER_PORT: ${PICKER_PORT:-5050}
 
 x-nvidia-env: &nvidia-env
   <<: *common-env
@@ -37,6 +56,7 @@ x-common-volumes: &common-volumes
   - ./data:/data:rw
   - ./models:/models:rw
   - ./config:/config:rw
+  - ./catalog:/workspaces/shared_ws/catalog:rw
   - /dev:/dev
   - /tmp/runtime-${USERNAME:-macs}:/tmp/runtime-${USERNAME:-macs}:rw
 

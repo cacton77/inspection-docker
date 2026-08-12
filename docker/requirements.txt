@@ -30,3 +30,8 @@ potpourri3d
 simple_parsing
 arrgh
 vtk
+
+# 3DX catalog integration
+cadquery-ocp>=7.7.2
+flask>=3.0
+stomp.py>=8.0
