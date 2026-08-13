@@ -108,9 +108,10 @@ and silently indexed only the first page.)
 The plan scopes the catalog by a 3DX bookmark ("Inspection Parts"). **The
 bookmark exists and is visible, but its contents cannot be enumerated through
 any endpoint this tenant exposes** — every relationship, mask, expand, and
-`documents` route returns 404 or empty children. Nor is there server-side
-filtering: `$filter`, `$where`, and `collabspace:"…"` predicates are all
-ignored or return nothing.
+`documents` route returns 404 or empty children.
+
+Server-side filtering, however, *does* exist — an earlier version of this
+document said it did not, which was wrong. See the tag-predicate section below.
 
 ### Evidence that this is an API gap, not an empty bookmark
 
@@ -158,7 +159,46 @@ With that captured, bookmark-scoped sync becomes implementable;
 `search_eng_items()` already takes an arbitrary query, and `sync_single_item()`
 already reconciles one id at a time, so only the enumeration step is missing.
 
-The only server-side scoping is the free-text `$searchStr`. What works:
+### Tag predicates: `[tag]:value` (this is the useful part)
+
+The search backend accepts Exalead-style tag predicates, but **only in bracket
+form**. `ds6w:label:Test` is answered with HTTP 500 ("The Search service
+returned an error"); `[ds6w:label]:Test` works. That syntax detail is why the
+first pass through this concluded there was no structured search at all.
+
+Tags confirmed live on this tenant:
+
+| Predicate | Meaning | Result |
+|---|---|---|
+| `[ds6w:project]:"Colin Acton Space"` | **collaborative space** | 3000+ items, 100% in that space |
+| `[ds6w:label]:Test` | object title | exact-ish title match |
+| `[ds6w:type]:VPMReference` | object type | works across spaces |
+
+Predicates AND together, and combine with free text:
+`[ds6w:project]:"Colin Acton Space" AND Test` returns exactly the one staged
+inspection part. Unrecognized or unpopulated tags (`[ds6w:who]`, `[ds6w:when]`,
+`[ds6wg:bookmark]`, `[ds6w:collabspace]`, …) return HTTP 200 with zero results
+rather than an error, so "0 results" never proves a tag is invalid.
+
+`[ds6w:project]` is what `CatalogSync._scope_query()` now uses whenever
+`DX_COLLAB_SPACE` is set: space filtering happens on the server, so the
+`CATALOG_MAX_ITEMS` scan budget is spent entirely on in-scope items instead of
+being burned on other spaces' content and discarded locally. Measured: a
+300-item scan under `DX_BOOKMARK_SCOPE=*` now yields 300 in-scope items, where
+previously it would have yielded roughly 19. A fallback drops the predicate and
+filters client-side if it ever returns nothing on the first page, so tenants
+without the tag still work.
+
+**No bookmark tag exists.** Every bookmark/workspace/subscription spelling
+returns 0, and bookmark membership is not an attribute of the item either:
+`$select`/`select`/`$include` are ignored by `dseng` (identical response for
+`bookmarks`, `workspaces`, `subscriptions`, `all`), and the `documents` view's
+`relateddata` only ever carries `ownerInfo`, `reservedInfo`, `originatorInfo`,
+`files`, and (with `$include=all`) `sovaccess`.
+
+### Free-text scoping
+
+Beyond the tag predicates, plain `$searchStr` works:
 
 | Scope | Result |
 |-------|--------|
@@ -168,14 +208,16 @@ The only server-side scoping is the free-text `$searchStr`. What works:
 | `Test` | 5 items, 1 of them the staged inspection part |
 | bookmark name or id | 0 items |
 
-Collaborative-space filtering is therefore applied **client-side**
-(`DX_COLLAB_SPACE`), and `CATALOG_MAX_ITEMS` (default 1000) bounds the scan.
+`DX_COLLAB_SPACE` is applied server-side via `[ds6w:project]` (with a
+client-side re-check as a safety net), and `CATALOG_MAX_ITEMS` (default 1000)
+bounds the scan.
 
 **This needs a decision.** A catalog of 1000 training-cell components is not a
 useful part picker. The realistic options:
 
 1. **A naming convention** — prefix inspection parts (`INSP_…`) and set
-   `DX_BOOKMARK_SCOPE` to that prefix. Most robust with the available API.
+   `DX_BOOKMARK_SCOPE` to that prefix. Most robust with the available API, and
+   now exact: it ANDs with `[ds6w:project]` into a single server-side query.
 2. **A dedicated collaborative space** for inspection parts, with
    `DX_COLLAB_SPACE` set to it.
 3. **Ask the tenant admin (Chris)** whether the `dsdo`, bookmark-content, and
