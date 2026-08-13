@@ -54,6 +54,8 @@ the organization and collaborative-space names are fine in the header.
 | Check-in completion | `POST /resources/v1/modeler/documents/{id}/files` | works (**POST only**) |
 | FCS download ticket | `PUT /resources/v1/modeler/documents/{id}/files/DownloadTicket` | works (**PUT only**) |
 | Bookmark list | `GET /resources/v1/modeler/dsbks/dsbks:Bookmark/search` | works |
+| **Object preview / thumbnail** | every documented route | **404 — only per-type icons exist** |
+| **Representations (3D Shape)** | `dsrepr:`, `dsgeo:`, `dseng:EngRepInstance` | **404 / empty** |
 | **Bookmark contents** | every documented route | **404 — not available** |
 | **Derived outputs (dsdo)** | every documented route | **404 — not available** |
 | **Document↔EngItem relationship** | every documented route | **404 — not available** |
@@ -149,9 +151,23 @@ practical workaround meanwhile.
   re-downloads its own plans; cross-cell discovery via
   `list_related_documents()` will find nothing until the relationship API is
   available.
-- **No thumbnails.** 3DX serves a rendered preview only for objects carrying
-  geometry; these items have none, so the cached "thumbnail" is the platform's
-  type icon. The picker renders it either way.
+- **No per-object preview images at all.** `documents/{id}` exposes only
+  `image` and `typeicon`, both pointing at `/snresources/images/icons/…` —
+  per-*type* artwork, byte-identical for every Physical Product. This is not a
+  matter of the items lacking geometry: `HAAS NC Machine` and the other CAD
+  assemblies report `files: []` too, because on a `VPMReference` the geometry
+  lives on a separate representation object, and every route to those
+  (`dsrepr:`, `dsgeo:`, `dseng:EngRepInstance`, `dseng:Mask.Representation`)
+  is 404 or empty here. No thumbnail service, no federated-search host
+  (`…-fs.3dexperience.3ds.com` does not resolve), and no `ds6w:thumbnail` in
+  any mask.
+
+  Generic icons are therefore **not cached** — a grid of 1000 identical icons
+  is worse than nothing. Instead the catalog renders a preview locally from the
+  cached STEP (`catalog/thumbnails.py`), so the parts that can actually be
+  inspected get real artwork and the rest fall back to the picker's
+  placeholder. Rendering is a plain painter's-algorithm rasterization through
+  matplotlib's Agg backend — no GL/EGL context, so it works headless.
 
 ---
 
