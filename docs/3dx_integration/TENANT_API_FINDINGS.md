@@ -56,7 +56,9 @@ the organization and collaborative-space names are fine in the header.
 | Bookmark list | `GET /resources/v1/modeler/dsbks/dsbks:Bookmark/search` | works |
 | **Object preview / thumbnail** | every documented route | **404 — only per-type icons exist** |
 | **Representations (3D Shape)** | `dsrepr:`, `dsgeo:`, `dseng:EngRepInstance` | **404 / empty** |
+| Library / class list | `GET /resources/v1/modeler/dslib/dslib:Library/search` (and `dslib:Class`) | works |
 | **Bookmark contents** | every documented route | **404 — not available** |
+| **Library / class members** | every documented route | **404 — not available** |
 | **Derived outputs (dsdo)** | every documented route | **404 — not available** |
 | **Document↔EngItem relationship** | every documented route | **404 — not available** |
 | Issue creation (dsiss) | `POST /resources/v1/modeler/dsiss/dsiss:Issue` | untested (no anomaly run yet) |
@@ -109,6 +111,52 @@ any endpoint this tenant exposes** — every relationship, mask, expand, and
 `documents` route returns 404 or empty children. Nor is there server-side
 filtering: `$filter`, `$where`, and `collabspace:"…"` predicates are all
 ignored or return nothing.
+
+### Evidence that this is an API gap, not an empty bookmark
+
+Worth stating precisely, because the two look identical from the outside:
+
+- The **"Robotic Arm" bookmark demonstrably has a child** — the folder
+  "Linkset" (`BMF_8187288486`, type `Workspace Vault`) is visible as its own
+  object in the same collaborative space, and `dsbks:Bookmark/search` returns
+  it. Asking the platform for that bookmark's children nevertheless returns
+  `children: []`, under every variant tried (`$include=children`,
+  `$include=all`, `$expand`, `$depth`, `$fields`). A container whose child is
+  independently visible while its child list reads empty is an API that does
+  not publish membership.
+- The bookmark type model is `Workspace` = "Bookmark Root Folder" (`BMR_`
+  prefix) and `Workspace Vault` = "Bookmark Folder" (`BMF_`). Both are
+  addressable only as `dsbks:Bookmark/{id}`, and both return just `{id, name}`
+  — no other resource-type spelling
+  (`dsbks:BookmarkFolder`, `dsbks:BookmarkRootFolder`, `dsbks:Workspace`,
+  `dsbks:WorkspaceVault`, `Workspace`) resolves.
+- No sub-resource exists: `dsbks:Content`, `:Contents`, `:Member(s)`,
+  `:Item(s)`, `:Child(ren)`, `:SubBookmark`, `:Reference`, `:SubscribedItem`,
+  `:BookmarkedItem`, `:Folder`, and the plain `children`/`items`/`contents`/
+  `expand`/`tree` forms all 404. No POST expand endpoint exists.
+- `OPTIONS` returns 200 with no `Allow` header, so the service advertises
+  nothing, and there is no service-discovery route under `/resources`.
+
+**The same limitation applies to every container type on this tenant**, which
+is what makes it look structural rather than bookmark-specific: `dslib:Library`
+and `dslib:Class` are searchable and return their own attributes, but neither
+publishes its members either. Combined with the missing Document↔EngItem
+relationship, the pattern is: **objects are readable, relationships are not.**
+
+### The one avenue left
+
+The 3DDashboard's own Bookmark widget clearly can list a bookmark's contents,
+so *some* endpoint serves it — most likely a non-`/resources/v1/modeler` route
+used by the web UI. It can be captured in two minutes:
+
+1. Open the "Inspection Parts" bookmark in the 3DDashboard.
+2. DevTools → Network, filter XHR, and click into the bookmark.
+3. Look for the request that returns the item list, and copy its URL, method,
+   request body, and response.
+
+With that captured, bookmark-scoped sync becomes implementable;
+`search_eng_items()` already takes an arbitrary query, and `sync_single_item()`
+already reconciles one id at a time, so only the enumeration step is missing.
 
 The only server-side scoping is the free-text `$searchStr`. What works:
 
