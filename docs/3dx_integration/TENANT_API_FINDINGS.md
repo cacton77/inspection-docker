@@ -57,15 +57,18 @@ the organization and collaborative-space names are fine in the header.
 | **Object preview / thumbnail** | every documented route | **404 — only per-type icons exist** |
 | **Representations (3D Shape)** | `dsrepr:`, `dsgeo:`, `dseng:EngRepInstance` | **404 / empty** |
 | Library / class list | `GET /resources/v1/modeler/dslib/dslib:Library/search` (and `dslib:Class`) | works |
-| **Bookmark contents** | every documented route | **404 — not available** |
+| **Bookmark contents** | `GET /resources/v1/modeler/dsbks/dsbks:Bookmark/{id}?$mask=dsbks:BksMask.Items` | **works** — see below |
+| Bookmark sub-folders | same, `$mask=dsbks:BksMask.Bookmarks` | works |
 | **Library / class members** | every documented route | **404 — not available** |
 | **Derived outputs (dsdo)** | every documented route | **404 — not available** |
 | **Document↔EngItem relationship** | every documented route | **404 — not available** |
 | Issue creation (dsiss) | `POST /resources/v1/modeler/dsiss/dsiss:Issue` | untested (no anomaly run yet) |
 
-Only `dskern:Mask.Default` exists. `Mask.Details`, `Mask.All`,
-`Mask.SpecificationRelation`, and every `dsbks:Mask.*` return
-`400 Mask does not exist`.
+Masks are per-service, and the naming is not uniform. `dseng` accepts only
+`dskern:Mask.Default` (`Mask.Details`, `Mask.All`, `Mask.SpecificationRelation`
+all return `400 Mask does not exist`), while `dsbks` uses its own `BksMask.*`
+family. A rejected mask name proves nothing about the capability — see
+"Scoping the catalog".
 
 ---
 
@@ -103,61 +106,84 @@ and silently indexed only the first page.)
 
 ---
 
-## Scoping the catalog is the open design question
+## Scoping the catalog — solved
 
-The plan scopes the catalog by a 3DX bookmark ("Inspection Parts"). **The
-bookmark exists and is visible, but its contents cannot be enumerated through
-any endpoint this tenant exposes** — every relationship, mask, expand, and
-`documents` route returns 404 or empty children.
+The plan scopes the catalog by a 3DX bookmark ("Inspection Parts"), and **that
+works exactly as designed**. Earlier revisions of this document claimed
+bookmark contents were unreachable; that was wrong, and the reason is worth
+recording because it cost a lot of probing.
 
-Server-side filtering, however, *does* exist — an earlier version of this
-document said it did not, which was wrong. See the tag-predicate section below.
+**The mask family for bookmarks is `dsbks:BksMask.*`, not `dsbks:Mask.*`.**
 
-### Evidence that this is an API gap, not an empty bookmark
+```
+GET /resources/v1/modeler/dsbks/dsbks:Bookmark/{id}
+    ?$mask=dsbks:BksMask.Items&$top=1000&$skip=0
+```
 
-Worth stating precisely, because the two look identical from the outside:
+`dsbks:Mask.Items` — the spelling every other service's masks would suggest —
+is rejected with `400 Mask does not exist`, which reads exactly like "this
+service has no such capability". It does; the constant is just named
+differently. Valid masks: `BksMask.Items`, `BksMask.Bookmarks` (sub-folders),
+`BksMask.Parent`, `BksMask.Linkable`. There is no `BksMask.Default` or
+`BksMask.Detail`.
 
-- The **"Robotic Arm" bookmark demonstrably has a child** — the folder
-  "Linkset" (`BMF_8187288486`, type `Workspace Vault`) is visible as its own
-  object in the same collaborative space, and `dsbks:Bookmark/search` returns
-  it. Asking the platform for that bookmark's children nevertheless returns
-  `children: []`, under every variant tried (`$include=children`,
-  `$include=all`, `$expand`, `$depth`, `$fields`). A container whose child is
-  independently visible while its child list reads empty is an API that does
-  not publish membership.
-- The bookmark type model is `Workspace` = "Bookmark Root Folder" (`BMR_`
-  prefix) and `Workspace Vault` = "Bookmark Folder" (`BMF_`). Both are
-  addressable only as `dsbks:Bookmark/{id}`, and both return just `{id, name}`
-  — no other resource-type spelling
-  (`dsbks:BookmarkFolder`, `dsbks:BookmarkRootFolder`, `dsbks:Workspace`,
-  `dsbks:WorkspaceVault`, `Workspace`) resolves.
-- No sub-resource exists: `dsbks:Content`, `:Contents`, `:Member(s)`,
-  `:Item(s)`, `:Child(ren)`, `:SubBookmark`, `:Reference`, `:SubscribedItem`,
-  `:BookmarkedItem`, `:Folder`, and the plain `children`/`items`/`contents`/
-  `expand`/`tree` forms all 404. No POST expand endpoint exists.
-- `OPTIONS` returns 200 with no `Allow` header, so the service advertises
-  nothing, and there is no service-discovery route under `/resources`.
+This was found in Dassault's own public C# SDK
+([3ds-cpe-emed/ws3dx-dotnet](https://github.com/3ds-cpe-emed/ws3dx-dotnet),
+`ws3dx.dsbks/core/service/BookmarkService.cs`), which documents the endpoints
+and mask names in source comments. **That repository is the best available
+reference for this platform's REST surface** — it covers dseng, dsmfg, dsdo,
+dsiss, dsprcs, dsxcad and more, and is worth consulting before probing
+anything by hand. The official documentation portal needs a 3DEXPERIENCE ID
+(a separate identity from the tenant passport, so the cell's credentials do
+not open it).
 
-**The same limitation applies to every container type on this tenant**, which
-is what makes it look structural rather than bookmark-specific: `dslib:Library`
-and `dslib:Class` are searchable and return their own attributes, but neither
-publishes its members either. Combined with the missing Document↔EngItem
-relationship, the pattern is: **objects are readable, relationships are not.**
+Notes on the response:
 
-### The one avenue left
+- Members arrive as `items.member[].referencedObject` with `identifier`,
+  `type`, and `relativePath`. Bookmarks hold anything the operator dragged in
+  — this tenant's contain `VPMReference`, `Document`, `Electrical3DSystem`,
+  `Requirement Group`, `System Scope` — so members must be filtered to
+  engineering items before being treated as parts.
+- The `totalItems` inside `items` is a **genuine** total, unlike the search
+  endpoint's, so it can be trusted to drive `$top`/`$skip` paging. `$top` caps
+  at 1000.
+- Sub-bookmarks (`Workspace Vault`, `BMF_` prefix) are separate objects listed
+  by `BksMask.Bookmarks`; `list_bookmark_items()` recurses into them with a
+  cycle guard.
+- `POST /dsbks:Bookmark/locate` exists and is documented as "fetches the
+  bookmarks where the input items are classified" — the reverse lookup — but
+  every payload shape tried returned `400 Payload is not valid.` Not needed
+  for scoping, but it is the route to check if per-item bookmark membership is
+  ever wanted.
 
-The 3DDashboard's own Bookmark widget clearly can list a bookmark's contents,
-so *some* endpoint serves it — most likely a non-`/resources/v1/modeler` route
-used by the web UI. It can be captured in two minutes:
+Measured effect: `DX_BOOKMARK_SCOPE="Inspection Parts"` produces a catalog of
+exactly the curated part in **2.7 s**, against 5.5 minutes and 1000 rows of
+training-cell noise for the previous `owner:CAN28` scope.
 
-1. Open the "Inspection Parts" bookmark in the 3DDashboard.
-2. DevTools → Network, filter XHR, and click into the bookmark.
-3. Look for the request that returns the item list, and copy its URL, method,
-   request body, and response.
+Server-side search filtering also exists — an earlier revision said it did not,
+which was also wrong. See the tag-predicate section below.
 
-With that captured, bookmark-scoped sync becomes implementable;
-`search_eng_items()` already takes an arbitrary query, and `sync_single_item()`
-already reconciles one id at a time, so only the enumeration step is missing.
+### Why the earlier "not available" conclusion was wrong
+
+Recorded as a caution, since the failure mode is convincing. Probing by hand
+produced: every `dsbks:Mask.*` spelling rejected as "Mask does not exist", every
+sub-resource (`dsbks:Content`, `:Members`, `:Items`, `children`, `expand`, …)
+404, `documents/{bookmark}` reporting `children: []` under every `$include`
+variant, and `OPTIONS` advertising nothing. That is indistinguishable from a
+service that does not implement membership — but the capability was there the
+whole time under a mask name no amount of guessing was going to reach.
+
+The lesson: **consult the SDK or documentation before concluding a 3DX
+capability is absent.** Enumerating plausible names is not evidence, because
+this platform answers a wrong-but-well-formed mask with a 400 and a
+wrong-but-well-formed path with a 404, exactly as it would if the feature did
+not exist.
+
+The same caution applies to the capabilities still listed as unavailable here
+(`dsdo` derived outputs, Document↔EngItem relationships, per-object
+thumbnails): they were probed the same way, so they may equally be reachable
+under names not yet tried. `ws3dx-dotnet` has `ws3dx.dsdo` and `ws3dx.dsiss`
+projects that would settle the first two.
 
 ### Tag predicates: `[tag]:value` (this is the useful part)
 
