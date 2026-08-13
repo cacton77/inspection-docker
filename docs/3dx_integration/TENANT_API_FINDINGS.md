@@ -60,7 +60,9 @@ the organization and collaborative-space names are fine in the header.
 | **Bookmark contents** | `GET /resources/v1/modeler/dsbks/dsbks:Bookmark/{id}?$mask=dsbks:BksMask.Items` | **works** — see below |
 | Bookmark sub-folders | same, `$mask=dsbks:BksMask.Bookmarks` | works |
 | **Library / class members** | every documented route | **404 — not available** |
-| **Derived outputs (dsdo)** | every documented route | **404 — not available** |
+| **Derived outputs (dsdo)** | `POST /resources/v1/modeler/dsdo/dsdo:DerivedOutputs/Locate` | **works** — STEP downloads |
+| Derived output download | `POST .../dsdo:DerivedOutputs/{doId}/dsdo:DerivedOutputFiles/{fileId}/DownloadTicket` | works |
+| CAD part / authoring file | `GET /resources/v1/modeler/dsxcad/dsxcad:Part/{id}` (`dsmvxcad:xCADPartMask.*`) | works |
 | **Document↔EngItem relationship** | every documented route | **404 — not available** |
 | Issue creation (dsiss) | `POST /resources/v1/modeler/dsiss/dsiss:Issue` | untested (no anomaly run yet) |
 
@@ -185,6 +187,82 @@ thumbnails): they were probed the same way, so they may equally be reachable
 under names not yet tried. `ws3dx-dotnet` has `ws3dx.dsdo` and `ws3dx.dsiss`
 projects that would settle the first two.
 
+## Derived outputs (STEP download) — solved
+
+Same story as bookmarks: the resource is `dsdo:DerivedOutput**s**` (plural),
+there is no GET collection, and the masks live under a *third* prefix.
+
+```
+POST /resources/v1/modeler/dsdo/dsdo:DerivedOutputs/Locate
+     ?$mask=dsmvdo:DerivedOutputsMask.AllDetails
+{"referencedObject": [{"id": "<engitem id>", "type": "VPMReference",
+                       "source": "<space url>",
+                       "relativePath": "/resources/v1/modeler/dseng/dseng:EngItem/<id>"}]}
+```
+
+`id` **and** `type` are both required (omitting `type` gives
+`400 ReferencedObject must have ID and Type`). Items with no conversion answer
+`400/500 "Error in Get Derived Output Info"` rather than an empty result, so
+that is treated as "none".
+
+The response carries `derivedOutputs.derivedOutputfiles[]` with `id`, `format`
+(`STEP_AP214`), `filename`, `filesize`, `downloadable`, and
+`streamAttributes.title` (the human filename). Download is two steps:
+
+```
+POST .../dsdo:DerivedOutputs/{doId}/dsdo:DerivedOutputFiles/{urlencoded fileId}/DownloadTicket
+  -> {"data": {"dataelements": {"ticketURL": ..., "ticket": ..., "filename": ...}}}
+GET  {ticketURL}?__fcs__jobTicket={ticket}
+```
+
+**The job ticket must be passed as a real query parameter, not concatenated
+into the URL.** It is base64 and contains `+` and `/`; unencoded, FCS answers
+`Failed to decrypt; FCS Bad ticket`. Note the asymmetry with check-in, where
+the ticket is posted as a *form field* named by `ticketparamname`.
+
+Verified: the staged part's `STEP_AP214` output (converter `sldprtToSTEP_AP214`)
+downloads as 18,045 bytes of valid `ISO-10303-21`, loads through the STEP
+pipeline (8 B-rep faces), and its thumbnail renders automatically.
+
+## Document↔EngItem relationship — still unresolved
+
+Uploaded plan Documents still cannot be linked to their engineering item.
+`ws3dx-dotnet` has no Document service to crib from, and `dseng` publishes no
+document relation under any of its masks (`dskern:Mask.Default`,
+`dsmveng:EngItemMask.Common`, `.Details`; `.Config` returns a 501 server
+exception). `dseng:EngItem/{id}/dseng:EnterpriseReference` exists but is a part
+number, not a link.
+
+Two routes remain, neither taken:
+
+1. **Attach the plan as a derived output** of the part. The machinery exists
+   (`POST /dsdo/CheckinTicket`, then `POST /dsdo/dsdo:DerivedOutputs` with
+   `{referencedObject, derivedoutputfiles: [{receipt, filename, format,
+   checksum}]}`) and would make plans discoverable through the same `Locate`
+   call the STEP fetch already uses. **Not done deliberately**: derived outputs
+   are converter-managed (`isSync`, `synchroStamp`, `converterName`), so
+   writing bespoke files into that collection risks interfering with the CAD
+   conversion pipeline on a system of record. Worth asking Dassault or Chris
+   before adopting.
+2. A Document/relationship service outside this SDK's coverage.
+
+Meanwhile the plan Document uploads correctly and its id is recorded locally
+(`plans.plan_doc_id`), so a cell re-finds its own plans; only cross-cell
+discovery is missing.
+
+## Thumbnails — confirmed absent, local rendering is right
+
+`dsxcad:Part/{id}` (masks `dsmvxcad:xCADPartMask.Default/.Basic/.Details`,
+`dsmvxcad:VisualizationFile.Details`) reports both files the platform holds for
+a part: `dsxcad:AuthoringFile` (here `Test.SLDPRT`, the original SolidWorks
+part, downloadable via `dsxcad:Part/{id}/dsxcad:AuthoringFile/DownloadTicket`)
+and `dsxcad:VisualizationFile` (`Visu_*.cgr`).
+
+Neither is an image: CGR is CATIA's tessellated geometry format, which nothing
+in this pipeline reads and which adds nothing over the STEP already fetched.
+There is still no per-object preview image on this tenant, so rendering
+thumbnails locally from the STEP remains the correct approach.
+
 ### Tag predicates: `[tag]:value` (this is the useful part)
 
 The search backend accepts Exalead-style tag predicates, but **only in bracket
@@ -257,10 +335,9 @@ practical workaround meanwhile.
 
 ## Consequences for the implementation
 
-- **No derived outputs** means `fetch_step()` cannot download STEP files from
-  the tenant. It falls back to adopting a STEP placed by hand at
-  `catalog/steps/{eng_item_id}/{revision}.stp`, and says so explicitly when
-  none is there. Everything downstream is unaffected.
+- **Derived outputs work**, so `fetch_step()` downloads STEP directly from
+  3DX. The hand-placed fallback at `catalog/steps/{eng_item_id}/{revision}.stp`
+  is retained for parts with no published conversion.
 - **No document↔item relationship** means an uploaded plan lands in 3DX as a
   proper Document with its file, but is not linked to the engineering item.
   The link is recorded locally (`plans.plan_doc_id`), so the same cell
