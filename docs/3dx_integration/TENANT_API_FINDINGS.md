@@ -373,6 +373,15 @@ practical workaround meanwhile.
   `PLAN_prd-R1132100093385-00221681_A.1`, envelope JSON checked in via FCS,
   downloaded back, and unwrapped with its 8 regions and cestamp intact.
 
+**Plan file format changed after this test.** Uploaded plans no longer wrap the
+results JSON under `plan`; PLM context now sits in top-level keys beside
+`meshes` (see the ViewpointGeneration README, "JSON Results Format"). The old
+envelope is still readable, so the two documents below still load. Titles now
+carry the pipeline stage as well (`PLAN_<part>_<rev>_ORDERED`), and only the
+terminal `ordered` stage is uploaded by default — see
+`auto_upload_plan_stages`. Every generated plan is recorded in the local
+catalog regardless of whether it is uploaded.
+
 Two test documents were created on the tenant during this work and are **not
 linked to any engineering item**; delete them if unwanted:
 
