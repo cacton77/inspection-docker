@@ -92,7 +92,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-${ROS_DISTRO}-rmw-cyclonedds-cpp
 
 # Clone shared workspace repositories
-RUN mkdir -p /workspaces/shared_ws/src
+RUN mkdir -p /workspaces/ros2_ws/src
 RUN mkdir -p /data
 RUN mkdir -p /models
 
@@ -120,7 +120,7 @@ RUN groupadd --gid ${GID} ${USERNAME} \
     && chown -R ${UID}:${GID} /home/${USERNAME}
 
 # Set the ownership of the shared workspace to the new user
-RUN chown -R ${UID}:${GID} /workspaces/shared_ws/
+RUN chown -R ${UID}:${GID} /workspaces/ros2_ws/
 RUN chown -R ${UID}:${GID} /data/
 
 # Set the user and source entrypoint in the user's .bashrc file

@@ -57,7 +57,7 @@ This builds an image tagged `<container_name>:jazzy` and writes `USE_JAZZY=true`
 The whole point of this migration is to escape the Servo regression. Validate in this order:
 
 1. **Container builds and starts:** `./launch_container.sh`
-2. **Workspace builds:** the entrypoint auto-builds `shared_ws`. Watch for any `ros-humble-*`-named find_package errors that should be `ros-jazzy-*` — rare but possible if any of our packages have distro-pinned references.
+2. **Workspace builds:** the entrypoint auto-builds `ros2_ws`. Watch for any `ros-humble-*`-named find_package errors that should be `ros-jazzy-*` — rare but possible if any of our packages have distro-pinned references.
 3. **Launch the system:** `./run.sh cell:=beta`
 4. **Test Servo specifically:**
    - With the robot in a non-singular pose, push the joystick in different directions.
@@ -70,8 +70,8 @@ The whole point of this migration is to escape the Servo regression. Validate in
 Once Jazzy is confirmed working and you want to retire Humble:
 
 1. Delete `docker/Dockerfile`, `docker/packages.txt`, `docker/overlay_packages.txt`.
-2. Rename `Dockerfile.jazzy` → `Dockerfile` (and update `docker-compose.yaml` accordingly).
-3. Merge `docker-compose.jazzy.yaml` into `docker-compose.yaml` and delete the override file.
+2. Rename `Dockerfile.jazzy` → `Dockerfile` (and update `docker/docker-compose.yaml` accordingly).
+3. Merge `docker-compose.jazzy.yaml` into `docker/docker-compose.yaml` and delete the override file.
 4. Remove the `USE_JAZZY` / `--jazzy` machinery from `install.sh` and `launch_container.sh`.
 5. Remove this `JAZZY_MIGRATION.md` file.
 

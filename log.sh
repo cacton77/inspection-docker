@@ -14,5 +14,5 @@ CONTAINER_NAME="${CONTAINER_NAME:-ros2-docker-template}"
 if [ "$USE_SERVICE" = "true" ]; then
     sudo journalctl -u "${CONTAINER_NAME}" -f
 else
-    echo "USE_SERVICE is not enabled. Use 'docker compose logs -f' or connect to the container directly."
+    echo "USE_SERVICE is not enabled. Use 'docker compose -f docker/docker-compose.yaml logs -f' or connect to the container directly."
 fi

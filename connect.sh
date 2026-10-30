@@ -17,7 +17,7 @@ CONTAINER_NAME="${CONTAINER_NAME:-ros2-docker-template}"
 COMPOSE_PROFILE="${COMPOSE_PROFILE:-linux}"
 COMPOSE_SERVICE="${COMPOSE_SERVICE:-linux}"
 
-COMPOSE_CMD="docker compose --profile $COMPOSE_PROFILE"
+COMPOSE_CMD="docker compose -f docker/docker-compose.yaml --env-file .env --profile $COMPOSE_PROFILE"
 
 # Ensure the Qt/XDG runtime directory exists and is owned by the container user
 RUNTIME_DIR="/tmp/runtime-${USERNAME:-macs}"

@@ -15,7 +15,7 @@ source "$SCRIPT_DIR/host-ids.sh"
 CONTAINER_NAME="${CONTAINER_NAME:-ros2-docker-template}"
 COMPOSE_PROFILE="${COMPOSE_PROFILE:-linux}"
 
-COMPOSE_CMD="docker compose --profile $COMPOSE_PROFILE"
+COMPOSE_CMD="docker compose -f docker/docker-compose.yaml --env-file .env --profile $COMPOSE_PROFILE"
 
 echo "Stopping any existing '$CONTAINER_NAME' containers..."
 $COMPOSE_CMD down --remove-orphans
@@ -25,7 +25,7 @@ if [ ${#STALE[@]} -gt 0 ]; then
 fi
 
 # --- X11 access for the in-container GUI (gui_node / RViz) -------------------
-# docker-compose.yaml bind-mounts /tmp/.docker.xauth (XAUTHORITY) and inherits
+# docker/docker-compose.yaml bind-mounts /tmp/.docker.xauth (XAUTHORITY) and inherits
 # $DISPLAY, but nothing creates that cookie -- so a fresh host has no valid X
 # authorization and the Open3D GUI dies with "Failed to open X display".
 #

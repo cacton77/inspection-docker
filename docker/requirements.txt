@@ -4,6 +4,7 @@ pytransform3d
 requests
 bayesian-optimization>=1.4,<2.0
 matplotlib
+pandas>=2.2,<3   # inspection_control debag_orientation_data
 
 # PyTorch (PartField)
 torch==2.7.0+cu128

@@ -1,5 +1,10 @@
-src/*
-!src/shared.repos
+# colcon workspace, mounted at /workspaces/ros2_ws. Only the vcstool manifest
+# is tracked; the cloned packages and colcon's outputs are not.
+ros2_ws/build/
+ros2_ws/install/
+ros2_ws/log/
+ros2_ws/src/*
+!ros2_ws/src/shared.repos
 data/*
 !data/data.repos
 !data/servo*

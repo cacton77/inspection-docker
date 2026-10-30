@@ -24,7 +24,7 @@ if [ "$USE_SERVICE" = "true" ]; then
     fi
 fi
 
-COMPOSE_CMD="docker compose --profile $COMPOSE_PROFILE"
+COMPOSE_CMD="docker compose -f docker/docker-compose.yaml --env-file .env --profile $COMPOSE_PROFILE"
 
 echo "Stopping any existing '$CONTAINER_NAME' containers..."
 $COMPOSE_CMD down --remove-orphans
