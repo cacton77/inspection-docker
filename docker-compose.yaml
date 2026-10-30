@@ -15,6 +15,8 @@ x-common-env: &common-env
   FASTDDS_DEFAULT_PROFILES_FILE: ${FASTDDS_DEFAULT_PROFILES_FILE:-/config/dds/fastdds.xml}
   # PartField package lives at the compose mount (./models:/models); make it importable
   PYTHONPATH: /models/PartField
+  # PLM catalog (plm_bridge): which backends to host. 3DX credentials follow.
+  PLM_BACKENDS: ${PLM_BACKENDS:-dx3}
   # 3DX integration (loaded from .env)
   DX_PASSPORT_URL: ${DX_PASSPORT_URL:-}
   DX_SPACE_URL: ${DX_SPACE_URL:-}
@@ -27,10 +29,16 @@ x-common-env: &common-env
   DX_MATURITY_FILTER: ${DX_MATURITY_FILTER:-}
   # Optional STOMP/AMQP bridge; unset means the catalog polls instead.
   DX_JMS_BROKER_URL: ${DX_JMS_BROKER_URL:-}
+  # Relate uploaded Documents to their item (off: the UW tenant has no such service).
+  DX_DOCUMENT_LINKS: ${DX_DOCUMENT_LINKS:-}
   CATALOG_SYNC_INTERVAL: ${CATALOG_SYNC_INTERVAL:-300}
   # Catalog cache root inside the container, matching the ./catalog mount below.
   CATALOG_ROOT: /workspaces/shared_ws/catalog
   CELL_ID: ${CELL_ID:-alpha}
+  # Prefix for uploaded titles; set TEST_PLM_BRIDGE_ when testing on a tenant.
+  CATALOG_TITLE_PREFIX: ${CATALOG_TITLE_PREFIX:-}
+  # How the plm-bridge CLI asks ViewpointGeneration to describe plan files.
+  PLAN_DESCRIBE_CMD: ${PLAN_DESCRIBE_CMD:-python3 -m viewpoint_generation.plan_io describe}
   # The picker binds this port. These services use network_mode: host, so it is
   # reachable at http://localhost:${PICKER_PORT} with no port mapping needed.
   PICKER_PORT: ${PICKER_PORT:-5050}
