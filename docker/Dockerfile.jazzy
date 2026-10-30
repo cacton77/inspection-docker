@@ -72,6 +72,33 @@ RUN TORCH_CUDA_ARCH_LIST="8.6;12.0" MAX_JOBS=4 \
     python3 -m pip install --break-system-packages --no-cache-dir \
         --no-binary=torch_scatter torch-scatter==2.1.2
 
+# Zivid SDK (Zivid 2+ MR60 3D camera) for the zivid-ros driver in ros2_ws/src/zivid-ros.
+# Placed after the CUDA/torch layers so bumping the SDK doesn't rebuild them.
+# ZIVID_SDK_VERSION must be within the range the pinned zivid-ros release
+# supports (v3.4.0: SDK 2.15-2.18). ZIVID_BACKEND selects the compute backend:
+#   cuda   -> zivid-cuda   (NVIDIA; needs the container toolkit + compute caps)
+#   opencl -> zivid-opencl (Intel iGPU via intel-opencl-icd + /dev/dri)
+# Both provide the `zivid` package with headers and CMake config. zivid-tools
+# gives ZividListCameras / ZividFirmwareUpdater; zivid-genicam is the GigE
+# transport. urdf-launch is the only ROS dep of zivid-ros not already present.
+ARG ZIVID_SDK_VERSION=2.18.0+1b44dbef-1
+ARG ZIVID_BACKEND=cuda
+RUN set -eux; \
+    case "${ZIVID_BACKEND}" in \
+        cuda) core=zivid-cuda; extra= ;; \
+        opencl) core=zivid-opencl; extra=intel-opencl-icd ;; \
+        *) echo "ZIVID_BACKEND must be cuda or opencl" >&2; exit 1 ;; \
+    esac; \
+    base="https://downloads.zivid.com/sdk/releases/${ZIVID_SDK_VERSION}/u24/amd64"; \
+    mkdir -p /tmp/zivid && cd /tmp/zivid; \
+    for pkg in ${core} zivid-tools zivid-genicam; do \
+        wget --quiet "${base}/${pkg}_${ZIVID_SDK_VERSION}_amd64.deb"; \
+    done; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends ./*.deb ${extra} \
+        ros-${ROS_DISTRO}-urdf-launch; \
+    cd / && rm -rf /tmp/zivid /var/lib/apt/lists/*
+
 # PartField is mounted via docker-compose at /models/PartField (./models:/models)
 ENV PYTHONPATH="/models/PartField:${PYTHONPATH}"
 
@@ -81,7 +108,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     rm -rf /var/lib/apt/lists/*
 
 # Workspace and data directories
-RUN mkdir -p /workspaces/shared_ws/src && \
+RUN mkdir -p /workspaces/ros2_ws/src && \
     mkdir -p /data && \
     mkdir -p /models
 
@@ -115,7 +142,7 @@ RUN if getent group ${GID} > /dev/null 2>&1; then \
     mkdir -p /home/${USERNAME} && \
     chown -R ${UID}:${GID} /home/${USERNAME}
 
-RUN chown -R ${UID}:${GID} /workspaces/shared_ws/ && \
+RUN chown -R ${UID}:${GID} /workspaces/ros2_ws/ && \
     chown -R ${UID}:${GID} /data/
 
 COPY ./docker/entrypoint.sh /

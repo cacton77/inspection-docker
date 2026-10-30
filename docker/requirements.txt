@@ -4,6 +4,7 @@ pytransform3d
 requests
 bayesian-optimization>=1.4,<2.0
 matplotlib
+pandas>=2.2,<3   # inspection_control debag_orientation_data
 
 # PyTorch (PartField)
 torch==2.7.0+cu128
@@ -30,3 +31,8 @@ potpourri3d
 simple_parsing
 arrgh
 vtk
+
+# 3DX catalog integration
+cadquery-ocp>=7.7.2
+flask>=3.0
+stomp.py>=8.0

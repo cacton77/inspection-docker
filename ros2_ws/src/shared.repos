@@ -17,9 +17,25 @@ repositories:
     ViewpointGeneration:
         type: git
         url: https://github.com/cacton77/ViewpointGeneration
+        # Depends on plm_bridge below (plm_interfaces, cad_loader).
+        version: main
+
+    # PLM parts catalog, part picker, STEP loader (plm_interfaces, cad_loader,
+    # plm_bridge, plm_bridge_ros).
+    plm_bridge:
+        type: git
+        url: https://github.com/cacton77/plm_bridge
         version: main
 
     http_image_publisher:
         type: git
         url: https://github.com/cacton77/http_image_publisher
         version: main
+
+    # Zivid 2+ MR60 driver. Pin to a release: each one supports a fixed range
+    # of Zivid SDK versions, which must match ZIVID_SDK_VERSION in
+    # docker/Dockerfile.jazzy (v3.4.0 -> SDK 2.15-2.18).
+    zivid-ros:
+        type: git
+        url: https://github.com/zivid/zivid-ros.git
+        version: v3.4.0

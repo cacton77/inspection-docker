@@ -1,3 +1,11 @@
+# Relative paths below resolve against this file's directory (docker/), so
+# host paths are ../<dir> and the build context is the repo root. The scripts
+# run compose from the repo root with `-f docker/docker-compose.yaml
+# --env-file .env`, since compose would otherwise look for docker/.env.
+# The project name is pinned so it doesn't default to "docker"; connect.sh
+# finds `compose run` containers by the ${CONTAINER_NAME}-<service>-run- prefix.
+name: ${CONTAINER_NAME:-ros2-docker-template}
+
 # ============================================================
 # Extension fields (YAML anchors for DRY config)
 # ============================================================
@@ -15,6 +23,33 @@ x-common-env: &common-env
   FASTDDS_DEFAULT_PROFILES_FILE: ${FASTDDS_DEFAULT_PROFILES_FILE:-/config/dds/fastdds.xml}
   # PartField package lives at the compose mount (./models:/models); make it importable
   PYTHONPATH: /models/PartField
+  # PLM catalog (plm_bridge): which backends to host. 3DX credentials follow.
+  PLM_BACKENDS: ${PLM_BACKENDS:-dx3}
+  # 3DX integration (loaded from .env)
+  DX_PASSPORT_URL: ${DX_PASSPORT_URL:-}
+  DX_SPACE_URL: ${DX_SPACE_URL:-}
+  DX_TENANT: ${DX_TENANT:-}
+  DX_USERNAME: ${DX_USERNAME:-}
+  DX_PASSWORD: ${DX_PASSWORD:-}
+  DX_SECURITY_CONTEXT: ${DX_SECURITY_CONTEXT:-}
+  DX_BOOKMARK_SCOPE: ${DX_BOOKMARK_SCOPE:-}
+  DX_COLLAB_SPACE: ${DX_COLLAB_SPACE:-}
+  DX_MATURITY_FILTER: ${DX_MATURITY_FILTER:-}
+  # Optional STOMP/AMQP bridge; unset means the catalog polls instead.
+  DX_JMS_BROKER_URL: ${DX_JMS_BROKER_URL:-}
+  # Relate uploaded Documents to their item (off: the UW tenant has no such service).
+  DX_DOCUMENT_LINKS: ${DX_DOCUMENT_LINKS:-}
+  CATALOG_SYNC_INTERVAL: ${CATALOG_SYNC_INTERVAL:-300}
+  # Catalog cache root inside the container, matching the ./catalog mount below.
+  CATALOG_ROOT: /catalog
+  CELL_ID: ${CELL_ID:-alpha}
+  # Prefix for uploaded titles; set TEST_PLM_BRIDGE_ when testing on a tenant.
+  CATALOG_TITLE_PREFIX: ${CATALOG_TITLE_PREFIX:-}
+  # How the plm-bridge CLI asks ViewpointGeneration to describe plan files.
+  PLAN_DESCRIBE_CMD: ${PLAN_DESCRIBE_CMD:-python3 -m viewpoint_generation.plan_io describe}
+  # The picker binds this port. These services use network_mode: host, so it is
+  # reachable at http://localhost:${PICKER_PORT} with no port mapping needed.
+  PICKER_PORT: ${PICKER_PORT:-5050}
 
 x-nvidia-env: &nvidia-env
   <<: *common-env
@@ -32,11 +67,15 @@ x-common-build-args: &common-build-args
 x-common-volumes: &common-volumes
   - /tmp/.X11-unix:/tmp/.X11-unix:rw
   - /tmp/.docker.xauth:/tmp/.docker.xauth:rw
-  - ./docker/entrypoint.sh:/entrypoint.sh:ro
-  - ./src:/workspaces/shared_ws/src:rw
-  - ./data:/data:rw
-  - ./models:/models:rw
-  - ./config:/config:rw
+  - ./entrypoint.sh:/entrypoint.sh:ro
+  # The whole colcon workspace (src/ plus build/, install/, log/) lives on the
+  # host, so builds persist across containers and colcon only rebuilds what
+  # changed.
+  - ../ros2_ws:/workspaces/ros2_ws:rw
+  - ../data:/data:rw
+  - ../models:/models:rw
+  - ../config:/config:rw
+  - ../catalog:/catalog:rw
   - /dev:/dev
   - /tmp/runtime-${USERNAME:-macs}:/tmp/runtime-${USERNAME:-macs}:rw
 
@@ -50,7 +89,7 @@ x-common-service: &common-service
   privileged: true
   device_cgroup_rules:
     - 'c *:* rmw'
-  working_dir: /workspaces/shared_ws
+  working_dir: /workspaces/ros2_ws
   user: ${HOST_UID:-1000}:${HOST_GID:-1000}
   command: ["/bin/bash"]
 
@@ -65,12 +104,14 @@ services:
     profiles: ["linux"]
     platform: linux/amd64
     build:
-      context: .
+      context: ..
       dockerfile: docker/Dockerfile.${ROS_DISTRO:-humble}
       network: host
       args:
         <<: *common-build-args
         BASE_IMAGE: osrf/ros:${ROS_DISTRO:-humble}-desktop-full
+        # Zivid SDK compute backend: no discrete GPU -> Intel iGPU OpenCL
+        ZIVID_BACKEND: opencl
     environment:
       <<: *common-env
     volumes: *common-volumes
@@ -83,12 +124,13 @@ services:
     profiles: ["linux-gpu"]
     platform: linux/amd64
     build:
-      context: .
+      context: ..
       dockerfile: docker/Dockerfile.${ROS_DISTRO:-humble}
       network: host
       args:
         <<: *common-build-args
         BASE_IMAGE: osrf/ros:${ROS_DISTRO:-humble}-desktop-full
+        ZIVID_BACKEND: cuda
     environment:
       <<: *nvidia-env
     volumes: *common-volumes

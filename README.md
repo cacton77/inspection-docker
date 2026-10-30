@@ -1,6 +1,6 @@
 # Inspection Docker
 
-A Docker-based deployment environment for the MACS Lab inspection cell. This repo sets up a ROS2 workspace (Humble or Jazzy), clones all inspection cell packages and data, provides GPU-accelerated mesh segmentation via PartField, and includes desktop shortcuts and a systemd service option for one-click bringup.
+A Docker-based deployment environment for the MACS Lab inspection cell. This repo sets up a ROS2 workspace (Humble or Jazzy), clones all inspection cell packages and data, provides GPU-accelerated mesh segmentation via PartField, and includes a systemd service option for auto-start bringup.
 
 ---
 
@@ -11,8 +11,9 @@ The container's ROS distro is parametrized (`ROS_DISTRO` in `.env`, currently `j
 - **MoveIt2** — built from source on Humble (apt doesn't ship `moveit_py` there); installed via apt on Jazzy
 - **CycloneDDS** as the default ROS2 middleware (FastDDS config is also shipped, but CycloneDDS is the one that's held up under cross-host, high-bandwidth image streaming — see `.env`)
 - **Universal Robots**, **Intel RealSense**, and **Foxglove Bridge** drivers/tools
+- **Zivid SDK 2.18** + the `zivid-ros` driver for the Zivid 2+ MR60 3D camera — see [Zivid 3D Camera](#zivid-3d-camera-zivid-2-mr60) below
 - **CUDA 12.8 + PyTorch 2.7** for GPU workloads, supporting everything from Ampere (A4000) through Blackwell (RTX 50-series) — see [GPU / PartField](#gpu--partfield-mesh-segmentation) below
-- A **source workspace** (`src/`) mounted from the host, containing all inspection cell packages
+- A **colcon workspace** (`ros2_ws/`) mounted from the host: the inspection cell packages in `ros2_ws/src/`, plus colcon's `build/`, `install/` and `log/`, which persist between containers so only changed packages rebuild
 - A **data directory** (`data/`) mounted from the host, containing viewpoint generation data via Git LFS
 - A **models directory** (`models/`) mounted from the host, containing the PartField mesh-segmentation model
 - **Arduino firmware** management for cell peripherals (e.g. the turntable's ESP32), built/flashed by `install.sh`
@@ -30,24 +31,22 @@ inspection-docker/
 ├── stop.sh                       # Stop the container (and systemd service, if enabled)
 ├── restart.sh                    # stop.sh + run.sh (or systemd restart)
 ├── log.sh                        # Tail systemd service logs (only when USE_SERVICE=true)
-├── desktop/
-│   ├── bringup.desktop           # Desktop shortcut: Inspection Bringup
-│   └── devel.desktop             # Desktop shortcut: Inspection Development
-├── assets/                       # Icons for the desktop shortcuts
-├── docker-compose.yaml           # Services: linux (no GPU), linux-gpu (NVIDIA passthrough)
 ├── docker/
+│   ├── docker-compose.yaml       # Services: linux (no GPU), linux-gpu (NVIDIA passthrough)
 │   ├── Dockerfile.humble         # Image definition — ROS2 Humble
 │   ├── Dockerfile.jazzy          # Image definition — ROS2 Jazzy (CUDA/PyTorch/PartField)
-│   ├── entrypoint.sh             # Sources ROS2, base_ws, and shared_ws on shell startup
+│   ├── entrypoint.sh             # Sources ROS2, base_ws, and ros2_ws on shell startup
 │   ├── packages.{humble,jazzy}.txt          # APT packages for the base image
 │   ├── overlay_packages.{humble,jazzy}.txt  # APT packages for the overlay (UR, RealSense)
 │   └── requirements.txt          # Python/PyTorch packages (PartField dependencies)
 ├── config/
 │   ├── dds/                      # cyclonedds.xml + fastdds.xml (mounted at /config/dds)
 │   └── rviz/                     # Saved RViz configs (mounted at /config/rviz)
-├── src/
-│   ├── shared.repos              # vcstool manifest for inspection cell packages
-│   └── ...                       # Cloned packages (created by install.sh)
+├── ros2_ws/                     # colcon workspace, mounted at /workspaces/ros2_ws
+│   ├── src/
+│   │   ├── shared.repos          # vcstool manifest for inspection cell packages
+│   │   └── ...                   # Cloned packages (created by install.sh)
+│   └── build/ install/ log/      # colcon outputs (gitignored, persist across containers)
 ├── data/
 │   ├── data.repos                # vcstool manifest for data repositories
 │   └── ViewpointGenerationData/  # Git LFS data (cloned by install.sh)
@@ -61,13 +60,14 @@ inspection-docker/
 
 ## ROS2 Packages
 
-All packages are cloned into `src/` by `install.sh` using vcstool.
+All packages are cloned into `ros2_ws/src/` by `install.sh` using vcstool.
 
 | Package | Repository | Branch |
 |---|---|---|
 | [ViewpointGeneration](https://github.com/cacton77/ViewpointGeneration) | cacton77/ViewpointGeneration | `main` |
 | [Inspection_Cell](https://github.com/DevanshB99/Inspection_Cell) | DevanshB99/Inspection_Cell | `main` |
 | [Inspection_Control](https://github.com/antara1005/Inspection_Control) | antara1005/Inspection_Control | `main` |
+| [zivid-ros](https://github.com/zivid/zivid-ros) | zivid/zivid-ros | `v3.4.0` (pinned to match the SDK) |
 | [Turntable_ROS2_Driver](https://github.com/DevanshB99/Turntable_ROS2_Driver) | DevanshB99/Turntable_ROS2_Driver | `ESP32` |
 | [http_image_publisher](https://github.com/cacton77/http_image_publisher) | cacton77/http_image_publisher | `main` |
 
@@ -95,7 +95,6 @@ Cloned into `models/` by `install.sh`. `PartField` points at our fork (compatibi
 
 - [Docker](https://docs.docker.com/engine/install/) with the Compose plugin
 - [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) (if using GPU — required for the `linux-gpu` profile)
-- `terminator` terminal emulator (used by desktop shortcuts)
 - `git-lfs`, `vcstool`, and `arduino-cli` are installed automatically by `install.sh` if missing
 
 ---
@@ -110,16 +109,15 @@ Cloned into `models/` by `install.sh`. `PartField` points at our fork (compatibi
 
 The script will:
 1. Install `pip3`, `vcstool`, and `git-lfs` if not present
-2. Clone all packages from `src/shared.repos` into `src/`
+2. Clone all packages from `ros2_ws/src/shared.repos` into `ros2_ws/src/` (first moving any packages from the old `./src` layout into place)
 3. Clone data repositories from `data/data.repos` and pull Git LFS objects
 4. Clone model repositories from `models/models.repos` and download the PartField checkpoint
-5. Install `arduino-cli` and compile/flash any firmware sketches found under `src/` (per-sketch `MICROROS_DOMAIN_ID` is generated from `.env`)
+5. Install `arduino-cli` and compile/flash any firmware sketches found under `ros2_ws/src/` (per-sketch `MICROROS_DOMAIN_ID` is generated from `.env`)
 6. Auto-detect an NVIDIA GPU (override with `--gpu` or `--linux`) and pick the Compose profile accordingly
 7. Build (or rebuild) the Docker image
-8. Install `.env`, `docker-compose.yaml`, `connect.sh`, and desktop shortcuts to `~/.local/share/applications/<container>/`, symlinked onto `~/Desktop`
-9. Increase kernel socket buffer limits (`rmem_max`/`wmem_max`/IP fragmentation thresholds) for DDS performance
-10. Optionally install a systemd service for auto-start (`--service`)
-11. Build `shared_ws` inside the container
+8. Increase kernel socket buffer limits (`rmem_max`/`wmem_max`/IP fragmentation thresholds) for DDS performance
+9. Optionally install a systemd service for auto-start (`--service`)
+10. Build `ros2_ws` inside the container
 
 ```bash
 # Force a platform profile
@@ -132,7 +130,7 @@ The script will:
 ./install.sh --no-service
 ```
 
-Re-running `install.sh` during development rebuilds the Docker image (using cache) and rebuilds `shared_ws`, making it the standard way to apply source changes. **After changing anything under `docker/`** (Dockerfile, packages, requirements), re-run `install.sh` (or `docker compose build`) to pick it up — an already-running container won't see Dockerfile changes until it's rebuilt.
+Re-running `install.sh` during development rebuilds the Docker image (using cache) and rebuilds `ros2_ws`. For source-only changes it's quicker to start a new container (`./connect.sh` / `./run.sh`), which runs an incremental `colcon build`, or to run `./connect.sh colcon build` in the running one. **After changing anything under `docker/`** (Dockerfile, packages, requirements), re-run `install.sh` (or `docker compose -f docker/docker-compose.yaml --env-file .env build`) to pick it up — an already-running container won't see Dockerfile changes until it's rebuilt.
 
 ---
 
@@ -169,13 +167,6 @@ Stop any existing container, start fresh, and run the full inspection cell bring
 ./log.sh       # Tail systemd service logs (only useful when USE_SERVICE=true)
 ```
 
-### Desktop Shortcuts
-
-After running `install.sh`, two shortcuts appear on the desktop:
-
-- **Inspection Bringup** — opens a terminal and runs `connect.sh`
-- **Inspection Development** — opens an interactive development shell
-
 ---
 
 ## Configuration
@@ -201,7 +192,7 @@ Key environment variables read by the scripts and Docker Compose:
 
 ## GPU / PartField Mesh Segmentation
 
-`docker/Dockerfile.jazzy` installs CUDA 12.8 and PyTorch 2.7.0+cu128 to run [PartField](https://github.com/nv-tlabs/PartField), used by `ViewpointGeneration`'s `PartFieldSegmentation` for AI-based mesh part segmentation (`src/ViewpointGeneration/.../partfield_segmentation.py`, invoked as a subprocess per segmentation call).
+`docker/Dockerfile.jazzy` installs CUDA 12.8 and PyTorch 2.7.0+cu128 to run [PartField](https://github.com/nv-tlabs/PartField), used by `ViewpointGeneration`'s `PartFieldSegmentation` for AI-based mesh part segmentation (`ros2_ws/src/ViewpointGeneration/.../partfield_segmentation.py`, invoked as a subprocess per segmentation call).
 
 This stack supports GPUs from Ampere through Blackwell (RTX 50-series). One thing to know if you touch this again: `torch_scatter`'s prebuilt wheel only ships native CUDA kernels up to `sm_90` (Hopper) — on `sm_120` (Blackwell) it silently falls back to JIT-compiling ancient `sm_50` PTX via the CUDA driver. The Dockerfile instead builds `torch_scatter` from source with `TORCH_CUDA_ARCH_LIST="8.6;12.0"` (Ampere + Blackwell) so both machine types get native kernels. `MAX_JOBS` is capped during that build to avoid OOM from parallel `nvcc` invocations.
 
@@ -211,17 +202,63 @@ Our PartField fork (`models/models.repos` → `cacton77/PartField`) carries two 
 
 ---
 
+## Zivid 3D Camera (Zivid 2+ MR60)
+
+`docker/Dockerfile.jazzy` installs the Zivid SDK (`ZIVID_SDK_VERSION`, currently 2.18) from Zivid's `.deb` releases, and `ros2_ws/src/shared.repos` clones [`zivid-ros`](https://github.com/zivid/zivid-ros) at `v3.4.0`, which supports SDK 2.15–2.18. **Bump the two together.** If they don't match, the driver fails to configure (`find_package(Zivid 2.15.0 ...)`) or the SDK rejects the camera firmware.
+
+The SDK has two compute backends, set per compose service by the `ZIVID_BACKEND` build arg:
+
+| Service | `ZIVID_BACKEND` | Package | GPU access |
+|---|---|---|---|
+| `linux-gpu` | `cuda` | `zivid-cuda` | NVIDIA Container Toolkit (`NVIDIA_DRIVER_CAPABILITIES=all` already includes `compute`) |
+| `linux` | `opencl` | `zivid-opencl` + `intel-opencl-icd` | Intel iGPU via `/dev/dri` (already mounted through `/dev`) |
+
+`zivid-tools` (`ZividListCameras`, `ZividFirmwareUpdater`) and `zivid-genicam` (the GigE transport) are installed for both. The container already uses `network_mode: host`, so the camera is discovered on the host's interfaces.
+
+### Host network
+
+The Zivid 2+ is a GigE Vision camera, and it needs **10 GbE** for full capture speed. 1/2.5/5 GbE work but are slower, and USB NICs are unreliable. Out of the box the camera has the static IP `172.28.60.5/24`. Give the host NIC it plugs into a static address on the same subnet, and enable jumbo frames:
+
+```bash
+nmcli con add type ethernet ifname <nic> con-name zivid \
+    ipv4.method manual ipv4.addresses 172.28.60.2/24 ipv6.method disabled 802-3-ethernet.mtu 9000
+nmcli con up zivid
+```
+
+The lab camera (serial `2631665A`) currently sits on the lab LAN instead, using DHCP (`192.168.0.209` as of 2026-10-05) over the host's 1 GbE port. That works, but captures are slower than over a dedicated 10 GbE link. Only one client can connect to the camera at a time. If Zivid Studio is open, `ZividListCameras` reports `Status: busy` and the driver aborts with *No available cameras found*. Close Studio before you launch the driver.
+
+The camera must also be reachable through **exactly one** host interface. If two NICs are on the camera's subnet (e.g. wired and Wi-Fi both on `192.168.0.0/24`), the driver aborts on connect with `Internal error: Expected only one local interface for a 'connected' state camera`. Disconnect the second interface (`nmcli dev disconnect <wifi-if>`), or give the camera its own subnet.
+
+### Verify and launch
+
+```bash
+./connect.sh ZividListCameras --test-connect        # camera discovered + connectable?
+./connect.sh ros2 launch zivid_samples zivid_camera.launch \
+    model:=ZIVID_2_PLUS_MR60 serial_number:=<serial>  # driver + URDF (robot_state_publisher)
+# Capture fails until settings are set. Have the capture assistant fill in settings_yaml:
+./connect.sh ros2 service call /capture_assistant/suggest_settings \
+    zivid_interfaces/srv/CaptureAssistantSuggestSettings "{max_capture_time: {sec: 1}}"
+./connect.sh ros2 service call /capture std_srvs/srv/Trigger   # publishes points/xyzrgba, color/image_color, depth/image
+```
+
+The driver sets `update_firmware_automatically:=true` by default, so on first connect it flashes the camera to match the SDK. Don't interrupt that. For repeatable inspection captures, tune the settings in Zivid Studio, export them to a `.yml`, and pass that file as `settings_file_path`. Set either `settings_file_path` or `settings_yaml`, not both; with both set, capture errors. Without hardware, set `file_camera_path` to a [Zivid file camera](https://support.zivid.com/en/latest/academy/camera/file-camera.html).
+
+---
+
 ## Workspace Layout Inside the Container
 
 | Path | Description |
 |---|---|
 | `/workspaces/base_ws` | MoveIt2 built from source on Humble (image layer, read-only at runtime) |
-| `/workspaces/shared_ws/src` | Inspection cell packages (bind-mounted from `./src`) |
+| `/workspaces/ros2_ws` | colcon workspace (bind-mounted from `./ros2_ws`): `src/`, `build/`, `install/`, `log/` |
+| `/catalog` | PLM parts catalog cache, used by [plm_bridge](https://github.com/cacton77/plm_bridge) (bind-mounted from `./catalog`) |
 | `/data` | Viewpoint generation data (bind-mounted from `./data`) |
 | `/models` | PartField and other models (bind-mounted from `./models`); added to `PYTHONPATH` |
 | `/config` | DDS and RViz config (bind-mounted from `./config`) |
 
-The entrypoint sources workspaces in order: ROS2 → `base_ws` → `shared_ws` (building `shared_ws` first if it hasn't been built yet).
+The entrypoint sources workspaces in order: ROS2 → `base_ws` → `ros2_ws`. When a **new container** starts (`./connect.sh` or `./run.sh` with none running), it first runs `colcon build` in `ros2_ws`. Because `build/`/`install/`/`log/` live on the host, that build is incremental: unchanged packages are skipped. Attaching to an already-running container, or opening another shell in it, only sources the workspace and never rebuilds (unless nothing has been built yet).
+
+`colcon build` writes into `ros2_ws/` as the container user, which `host-ids.sh` matches to the host user, so the outputs stay owned by you on the host. To force a clean rebuild, delete `ros2_ws/build ros2_ws/install ros2_ws/log` on the host.
 
 ---
 
@@ -230,9 +267,9 @@ The entrypoint sources workspaces in order: ROS2 → `base_ws` → `shared_ws` (
 To pull the latest changes for all packages:
 
 ```bash
-cd src && vcs pull        # ROS2 packages
-cd ../data && vcs pull    # Data repositories
-cd ../models && vcs pull  # Model repositories
+cd ros2_ws/src && vcs pull   # ROS2 packages
+cd ../../data && vcs pull      # Data repositories
+cd ../models && vcs pull       # Model repositories
 ```
 
 Then re-run `install.sh` to rebuild the workspace:

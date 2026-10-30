@@ -57,8 +57,30 @@ else
     echo "✓ vcstool is already installed"
 fi
 
-# Import dependencies into shared_ws directory
-SRC_DIR="$SCRIPT_DIR/src"
+# Import dependencies into the colcon workspace's src directory
+WS_DIR="$SCRIPT_DIR/ros2_ws"
+SRC_DIR="$WS_DIR/src"
+mkdir -p "$SRC_DIR"
+
+# Migrate a checkout from the old layout (packages directly in ./src) so local
+# work isn't left behind and re-cloned. shared.repos itself is tracked by git
+# at its new path, so only the cloned packages are moved.
+if [ -d "$SCRIPT_DIR/src" ]; then
+    echo "Migrating packages from ./src to ./ros2_ws/src..."
+    for pkg in "$SCRIPT_DIR"/src/*/; do
+        [ -d "$pkg" ] || continue
+        name=$(basename "$pkg")
+        if [ -e "$SRC_DIR/$name" ]; then
+            echo "  skipping $name: already present in ros2_ws/src"
+        else
+            mv "$pkg" "$SRC_DIR/$name" && echo "  moved $name"
+        fi
+    done
+    rm -f "$SCRIPT_DIR/src/shared.repos"
+    rmdir "$SCRIPT_DIR/src" 2>/dev/null \
+        || echo "  ./src still has content (see above); left in place"
+fi
+
 cd "$SRC_DIR"
 echo "Importing dependencies..."
 vcs import < ./shared.repos
@@ -465,7 +487,7 @@ cd "$SCRIPT_DIR" || exit 1
 # Build the Docker image
 echo ""
 echo "Building Docker image (profile: $COMPOSE_PROFILE, distro: $ROS_DISTRO)..."
-docker compose --profile "$COMPOSE_PROFILE" build "$COMPOSE_SERVICE"
+docker compose -f docker/docker-compose.yaml --env-file .env --profile "$COMPOSE_PROFILE" build "$COMPOSE_SERVICE"
 
 if [ $? -eq 0 ]; then
     echo "✓ Docker image built successfully"
@@ -473,15 +495,6 @@ else
     echo "✗ Docker build failed"
     exit 1
 fi
-
-# Create applications directory if it doesn't exist
-APPS_DIR="$HOME/.local/share/applications/$CONTAINER_NAME"
-echo ""
-echo "Ensuring applications directory exists: $APPS_DIR"
-if [ -d "$APPS_DIR" ]; then
-    rm -rf "$APPS_DIR"
-fi
-mkdir -p "$APPS_DIR"
 
 # Update .env file
 ENV_FILE=".env"
@@ -516,79 +529,9 @@ if [ -f "$SCRIPT_DIR/$ENV_FILE" ]; then
     else
         echo "USE_SERVICE=$USE_SERVICE" >> "$SCRIPT_DIR/$ENV_FILE"
     fi
-    # Copy .env file to apps directory
-    echo "Copying .env file to $APPS_DIR..."
-    cp "$SCRIPT_DIR/$ENV_FILE" "$APPS_DIR/"
-    echo "✓ .env file installed (CONTAINER_NAME=$CONTAINER_NAME, COMPOSE_PROFILE=$COMPOSE_PROFILE, ROS_DISTRO=$ROS_DISTRO, USE_SERVICE=$USE_SERVICE)"
+    echo "✓ .env file updated (CONTAINER_NAME=$CONTAINER_NAME, COMPOSE_PROFILE=$COMPOSE_PROFILE, ROS_DISTRO=$ROS_DISTRO, USE_SERVICE=$USE_SERVICE)"
 else
     echo "✗ .env file not found: $SCRIPT_DIR/$ENV_FILE"
-    exit 1
-fi
-
-# Copy docker-compose file
-echo "Copying docker-compose file to $APPS_DIR..."
-cp "$SCRIPT_DIR/docker-compose.yaml" "$APPS_DIR/"
-echo "✓ Docker compose file installed"
-
-# Copy main script
-MAIN_SCRIPT="connect.sh"
-if [ -f "$SCRIPT_DIR/$MAIN_SCRIPT" ]; then
-    echo "Copying main script to $APPS_DIR..."
-    cp "$SCRIPT_DIR/$MAIN_SCRIPT" "$APPS_DIR/"
-    chmod +x "$APPS_DIR/$MAIN_SCRIPT"
-    echo "✓ Main script installed"
-else
-    echo "✗ Main script not found: $SCRIPT_DIR/$MAIN_SCRIPT"
-    exit 1
-fi
-
-# Copy assets
-ASSETS_DIR="$APPS_DIR/assets"
-echo ""
-echo "Ensuring assets directory exists: $ASSETS_DIR"
-mkdir -p "$ASSETS_DIR"
-
-# Copy asset files
-for asset in "$SCRIPT_DIR/assets/"*; do
-    if [ -f "$asset" ]; then
-        echo "Copying asset file to $ASSETS_DIR..."
-        cp "$asset" "$ASSETS_DIR/"
-    fi
-done
-
-# Copy desktop file
-BRINGUP_DESKTOP_FILE="bringup.desktop"
-if [ -f "$SCRIPT_DIR/desktop/$BRINGUP_DESKTOP_FILE" ]; then
-    echo "Copying bringup desktop file to $APPS_DIR..."
-    cp "$SCRIPT_DIR/desktop/$BRINGUP_DESKTOP_FILE" "$APPS_DIR/"
-    chmod +x "$APPS_DIR/$BRINGUP_DESKTOP_FILE"
-    echo "✓ Bringup desktop file installed"
-    echo "Icon=$ASSETS_DIR/bringup_icon.png" >> "$APPS_DIR/$BRINGUP_DESKTOP_FILE"
-    echo "Creating bringup desktop shortcut..."
-    mkdir -p "$HOME/Desktop"
-    # Remove existing shortcut if it exists
-    rm -f "$HOME/Desktop/$BRINGUP_DESKTOP_FILE"
-    ln -s "$APPS_DIR/$BRINGUP_DESKTOP_FILE" "$HOME/Desktop/"
-    echo "✓ Desktop shortcut created"
-else
-    echo "✗ Bringup desktop file not found: $SCRIPT_DIR/desktop/$BRINGUP_DESKTOP_FILE"
-    exit 1
-fi
-# Copy devel desktop file
-DEVEL_DESKTOP_FILE="devel.desktop"
-if [ -f "$SCRIPT_DIR/desktop/$DEVEL_DESKTOP_FILE" ]; then
-    echo "Copying devel desktop file to $APPS_DIR..."
-    cp "$SCRIPT_DIR/desktop/$DEVEL_DESKTOP_FILE" "$APPS_DIR/"
-    chmod +x "$APPS_DIR/$DEVEL_DESKTOP_FILE"
-    echo "✓ Devel desktop file installed"
-    echo "Icon=$ASSETS_DIR/devel_icon.png" >> "$APPS_DIR/$DEVEL_DESKTOP_FILE"
-    echo "Creating devel desktop shortcut..."
-    # Remove existing shortcut if it exists
-    rm -f "$HOME/Desktop/$DEVEL_DESKTOP_FILE"
-    ln -s "$APPS_DIR/$DEVEL_DESKTOP_FILE" "$HOME/Desktop/"
-    echo "✓ Desktop shortcut created"
-else
-    echo "✗ Devel desktop file not found: $SCRIPT_DIR/desktop/$DEVEL_DESKTOP_FILE"
     exit 1
 fi
 
@@ -599,15 +542,6 @@ for script in connect.sh run.sh stop.sh restart.sh log.sh; do
     fi
 done
 echo "✓ Scripts are executable"
-
-# Update desktop database (optional, helps with immediate icon visibility)
-if command -v update-desktop-database &> /dev/null; then
-    echo ""
-    echo "Updating desktop database..."
-    update-desktop-database "$APPS_DIR"
-    echo "✓ Desktop database updated"
-    echo ""
-fi
 
 # Set up systemd service if requested
 if [ "$USE_SERVICE" = "true" ]; then

@@ -68,7 +68,7 @@ Out of scope (for now): Isaac Lab / RL training, multi-robot, cloud streaming.
 **Exit:** image pulls; `topic_based_ros2_control` install path known.
 
 ### Phase 1 — Isaac container stands up & streams (½–1 day)
-1. Add an `isaac-sim` service to `docker-compose.yaml` (new profile `isaac`):
+1. Add an `isaac-sim` service to `docker/docker-compose.yaml` (new profile `isaac`):
    - image `nvcr.io/nvidia/isaac-sim:5.0.0`, `network_mode: host`, `ipc: host`,
      same `NVIDIA_*` env as `linux-gpu`, GPU `deploy.resources` block.
    - Mount cache volumes (`~/docker/isaac-sim/cache/*`) to avoid shader recompiles.
@@ -170,7 +170,7 @@ roughly **1 week** of focused work. Faithful twin incl. sensors: 2–3 weeks.
 
 ## 6. Files expected to change / be added
 
-- `docker-compose.yaml` — new `isaac-sim` service + `isaac` profile, cache volumes.
+- `docker/docker-compose.yaml` — new `isaac-sim` service + `isaac` profile, cache volumes.
 - `.env` — optional `COMPOSE_PROFILE` toggle for Isaac.
 - `isaac/` (new) — USD scenes, OmniGraph setup scripts, import helpers.
 - `src/Inspection_Cell/inspection_cell_description/urdf/inspection_cell.ros2_control.xacro`
