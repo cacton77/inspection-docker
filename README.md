@@ -251,7 +251,7 @@ The driver sets `update_firmware_automatically:=true` by default, so on first co
 |---|---|
 | `/workspaces/base_ws` | MoveIt2 built from source on Humble (image layer, read-only at runtime) |
 | `/workspaces/ros2_ws` | colcon workspace (bind-mounted from `./ros2_ws`): `src/`, `build/`, `install/`, `log/` |
-| `/catalog` | 3DX catalog cache (bind-mounted from `./catalog`) |
+| `/catalog` | PLM parts catalog cache, used by [plm_bridge](https://github.com/cacton77/plm_bridge) (bind-mounted from `./catalog`) |
 | `/data` | Viewpoint generation data (bind-mounted from `./data`) |
 | `/models` | PartField and other models (bind-mounted from `./models`); added to `PYTHONPATH` |
 | `/config` | DDS and RViz config (bind-mounted from `./config`) |

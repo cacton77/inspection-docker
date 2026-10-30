@@ -1,8 +1,9 @@
 # colcon workspace, mounted at /workspaces/ros2_ws. Only the vcstool manifest
-# is tracked; the cloned packages and colcon's outputs are not.
-ros2_ws/build/
-ros2_ws/install/
-ros2_ws/log/
+# is tracked: the cloned packages, colcon's outputs (build/, install/, log/)
+# and runtime files written in the workspace root (cyclonedds.log, *.yaml
+# dumps, ...) are not.
+ros2_ws/*
+!ros2_ws/src/
 ros2_ws/src/*
 !ros2_ws/src/shared.repos
 data/*
