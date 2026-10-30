@@ -1,7 +1,7 @@
 # 3DEXPERIENCE integration docs: moved
 
 The parts catalog and its 3DEXPERIENCE (3DX) integration now live in the
-[plm_bridge](https://github.com/cacton77/plm_bridge) repository (private), and
+[plm_bridge](https://github.com/cacton77/plm_bridge) repository (public, BSD-3-Clause), and
 so do these documents:
 
 - `docs/backends/dx3.md`: what the tenant's REST API actually does,
