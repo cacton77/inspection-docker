@@ -39,3 +39,12 @@ repositories:
         type: git
         url: https://github.com/zivid/zivid-ros.git
         version: v3.4.0
+
+    # magpi (end-of-arm Pi) driver. Needed here for ps_interfaces, so the
+    # foxglove_bridge on this host can show /camera_head/led_ring/* and lens
+    # state. Only ps_interfaces needs building on this host:
+    #   colcon build --packages-select ps_interfaces
+    Inspection_EOAT_ROS2_Driver:
+        type: git
+        url: https://github.com/cacton77/Inspection_EOAT_ROS2_Driver.git
+        version: main

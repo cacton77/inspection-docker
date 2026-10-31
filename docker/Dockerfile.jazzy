@@ -107,6 +107,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         ros-${ROS_DISTRO}-rmw-cyclonedds-cpp && \
     rm -rf /var/lib/apt/lists/*
 
+# H.264 image_transport plugin ("foxglove"): bringup re-encodes magpi's JPEG
+# stream as /pi_camera/video/foxglove for remote Foxglove viewers, since the
+# JPEG stream (~90 Mbit/s) is more than a home link over Tailscale carries.
+# Its own late layer so adding it doesn't rebuild the CUDA/torch layers above.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ros-${ROS_DISTRO}-foxglove-compressed-video-transport && \
+    rm -rf /var/lib/apt/lists/*
+
 # Workspace and data directories
 RUN mkdir -p /workspaces/ros2_ws/src && \
     mkdir -p /data && \
