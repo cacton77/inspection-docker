@@ -1,4 +1,10 @@
 repositories:
+    # System bringup (inspection_bringup, rig profiles). run.sh launches it.
+    Inspection_System:
+        type: git
+        url: https://github.com/cacton77/Inspection_System.git
+        version: main
+
     Inspection_Cell:
         type: git
         url: https://github.com/DevanshB99/Inspection_Cell

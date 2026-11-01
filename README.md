@@ -68,6 +68,7 @@ All packages are cloned into `ros2_ws/src/` by `install.sh` using vcstool.
 
 | Package | Repository | Branch |
 |---|---|---|
+| [Inspection_System](https://github.com/cacton77/Inspection_System) | cacton77/Inspection_System | `main` |
 | [ViewpointGeneration](https://github.com/cacton77/ViewpointGeneration) | cacton77/ViewpointGeneration | `main` |
 | [Inspection_Cell](https://github.com/DevanshB99/Inspection_Cell) | DevanshB99/Inspection_Cell | `main` |
 | [Inspection_Control](https://github.com/antara1005/Inspection_Control) | antara1005/Inspection_Control | `main` |
@@ -157,11 +158,14 @@ If the container is already running, this execs a new shell into it. Additional 
 
 ### Bringup
 
-Stop any existing container, start fresh, and run the full inspection cell bringup (`viewpoint_generation bringup.launch.py`):
+Stop any existing container, start fresh, and run the full inspection cell bringup, [Inspection_System](https://github.com/cacton77/Inspection_System)'s `inspection_bringup`:
 
 ```bash
-./run.sh
+./run.sh                 # the rig set by RIG in .env
+./run.sh sim:=true       # extra launch arguments override the rig
 ```
+
+`RIG` in `.env` names a rig profile, `inspection_bringup/config/rigs/<RIG>.yaml`, which holds the launch arguments for this machine's physical setup (e.g. `beta_dual`: the beta cell with the Zivid arm). Unset, it is `none`: no cell hardware. The rigs and every launch argument are documented in Inspection_System's README.
 
 ### Stop / Restart / Logs
 
@@ -187,6 +191,7 @@ Key environment variables read by the scripts and Docker Compose:
 | `RMW_IMPLEMENTATION` | `rmw_cyclonedds_cpp` | ROS2 middleware. FastDDS is also configured but stalls on cross-host high-bandwidth image topics — stick with Cyclone unless something specifically needs FastDDS |
 | `COMPOSE_PROFILE` / `COMPOSE_SERVICE` | `linux` | Which Compose profile/service to run — set automatically by `install.sh` based on GPU auto-detection (or `--gpu`/`--linux`/`--profile=`) |
 | `USE_SERVICE` | `false` | Whether the container is managed by a systemd service |
+| `RIG` | `none` | Rig profile `run.sh` launches (`inspection_bringup/config/rigs/<RIG>.yaml`), e.g. `beta_dual` |
 
 ### DDS
 

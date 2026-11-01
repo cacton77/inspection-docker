@@ -71,4 +71,6 @@ elif [ -z "$DISPLAY" ]; then
     echo "         ./run.sh headless_mode:=true"
 fi
 
-exec "$SCRIPT_DIR/connect.sh" ros2 launch viewpoint_generation bringup.launch.py "$@"
+# The rig profile (inspection_bringup/config/rigs/$RIG.yaml) comes from .env;
+# arguments given to run.sh override it.
+exec "$SCRIPT_DIR/connect.sh" ros2 launch inspection_bringup bringup.launch.py ${RIG:+rig:=$RIG} "$@"

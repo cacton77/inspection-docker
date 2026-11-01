@@ -15,8 +15,8 @@ Foxglove desktop ──ws://<lab host>:8765──▶ foxglove_bridge (lab contai
 
 ## Connecting
 
-1. Start the cell as usual (`./run.sh`). ViewpointGeneration's `bringup.launch.py` starts the
-   bridge on port 8765.
+1. Start the cell as usual (`./run.sh`). The system bringup (Inspection_System's
+   `inspection_bringup`) starts the bridge on port 8765.
 2. In Foxglove, **Open connection → Foxglove WebSocket**, URL `ws://<lab host>:8765`.
    - On the lab LAN, `<lab host>` is the lab PC's hostname or address (`pop-os`).
    - Off campus, join the lab's Tailscale network and use the PC's Tailscale name. magpi is
@@ -29,7 +29,7 @@ Both hosts must share a `ROS_DOMAIN_ID` (lab `.env` here, magpi's `.env` in
 
 ## Bridge configuration
 
-The bridge's parameters are set in ViewpointGeneration's `bringup.launch.py` and are read once
+The bridge's parameters are set in `inspection_bringup/launch/bringup.launch.py` (Inspection_System) and are read once
 at startup, so restart the bringup (or just the bridge) after changing them.
 
 | Parameter | Value | Why |

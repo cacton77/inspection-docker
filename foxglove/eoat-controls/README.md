@@ -93,7 +93,7 @@ cylinders) and `labels`. Set the display frame to `object_frame` or
 ## Use
 
 Connect Foxglove (desktop app) to the lab bridge, `ws://<lab host>:8765`, and add the
-panels. The bridge (configured in ViewpointGeneration's `bringup.launch.py`) is
+panels. The bridge (configured in Inspection_System's `inspection_bringup/launch/bringup.launch.py`) is
 whitelisted to exactly what these panels need:
 
 - client publishing on `/camera_head/led_ring/request`, `/camera_head/lens/request` and
