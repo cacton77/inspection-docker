@@ -17,6 +17,7 @@ The container's ROS distro is parametrized (`ROS_DISTRO` in `.env`, currently `j
 - A **data directory** (`data/`) mounted from the host, containing viewpoint generation data via Git LFS
 - A **models directory** (`models/`) mounted from the host, containing the PartField mesh-segmentation model
 - **Arduino firmware** management for cell peripherals (e.g. the turntable's ESP32), built/flashed by `install.sh`
+- **Foxglove** remote viewing and control: camera feeds, the robot model and viewpoint-generation results through the lab's `foxglove_bridge`, plus custom panels for the EOAT lights and focus, the part catalog and the planning pipeline — see [Foxglove](#foxglove)
 
 ---
 
@@ -53,6 +54,9 @@ inspection-docker/
 ├── models/
 │   ├── models.repos              # vcstool manifest for model repositories
 │   └── PartField/                # Cloned by install.sh; checkpoint also fetched by install.sh
+├── foxglove/
+│   └── eoat-controls/            # Foxglove extension: EOAT Lighting/Focus, PLM Catalog, Viewpoint Generation panels
+├── docs/                         # FOXGLOVE.md, migration notes, integration plans
 └── arduino/                       # arduino-cli install + compiled firmware artifacts
 ```
 
@@ -245,6 +249,34 @@ The driver sets `update_firmware_automatically:=true` by default, so on first co
 
 ---
 
+## Foxglove
+
+The bringup starts `foxglove_bridge` on port 8765, so the cell can be watched and driven from
+the [Foxglove](https://foxglove.dev) desktop app on any machine that can reach the lab PC
+(on the LAN, or over Tailscale from off campus). Connect with **Open connection → Foxglove
+WebSocket**, `ws://<lab host>:8765`.
+
+- **Cameras**: view the EOAT macro camera as `/pi_camera/video/foxglove`, an H.264 stream
+  (~1 Mbit/s) re-encoded on the lab, rather than the ~88 Mbit/s JPEG topic.
+- **Robot model**: enable `/robot_description` in a 3D panel, and set **Scene → Ignore COLLADA
+  `<up_axis>`**.
+- **Viewpoint generation**: ViewpointGeneration's `foxglove_viz_node` draws each pipeline
+  stage's results (regions, clusters, viewpoints, path, blind spots) on
+  `/viewpoint_generation/viz/*`, the remote counterpart of the Open3D GUI.
+- **Panels**: the `EOAT Controls` extension in [`foxglove/eoat-controls/`](foxglove/eoat-controls/)
+  adds **EOAT Lighting**, **EOAT Focus**, **PLM Catalog** and **Viewpoint Generation** panels.
+  Install it once per machine (Node.js 18+):
+
+  ```bash
+  cd foxglove/eoat-controls && npm install && npm run local-install   # then restart Foxglove
+  ```
+
+The bridge only lets clients publish on, and call, the topics and services those panels need.
+[`docs/FOXGLOVE.md`](docs/FOXGLOVE.md) has the full guide: the bridge whitelist, topics, panel
+details, layout tips and troubleshooting.
+
+---
+
 ## Workspace Layout Inside the Container
 
 | Path | Description |
@@ -288,5 +320,6 @@ Or rebuild directly inside the container without going through the full install:
 
 ## Further Documentation
 
+- [`docs/FOXGLOVE.md`](docs/FOXGLOVE.md) — remote viewing and control with Foxglove: bridge setup, topics, the EOAT Controls panels, troubleshooting
 - [`JAZZY_MIGRATION.md`](JAZZY_MIGRATION.md) — handoff notes from the Humble → Jazzy migration, including an unresolved `moveit_servo` regression
 - [`ISAAC_SIM_INTEGRATION.md`](ISAAC_SIM_INTEGRATION.md) — plan for integrating Isaac Sim 5.0 as a simulation backend
